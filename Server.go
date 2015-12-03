@@ -4,6 +4,7 @@ import (
     "fmt"
     "net"
     "strconv"
+    "errors"
 )
 
 func server(port int) {
@@ -19,41 +20,78 @@ func server(port int) {
         connection, err := listener.Accept()
         fmt.Println("Connection established!")
 
+         go forceShutDown(listener, connection) 
+
         if (err != nil) {
             fmt.Println("Failed to establish connection.")
+            break
         } else {
             go handleClient(connection)
         }
     }
 }
 
+func read(client net.Conn) (string, error) {
+    holder := make([]byte, 10)
+    _, err := client.Read(holder)
+    if (err != nil) {
+        //fmt.Println("Error couldn't get how many bytes that will be sent.")
+        return "", errors.New("Error couldn't get how many bytes that will be sent.")
+    }
+    bytes, _ := strconv.Atoi(string(holder))
+    message := ""   
+    
+    for (bytes != 0) {
+        _, err := client.Read(holder)
+        if (err != nil) {
+            //fmt.Println("Error when reading from client.")
+            return "", errors.New("Error when reading from client.")
+        }
+        
+        message += string(holder)
+        bytes--
+    }
+    return string(message[:]), nil
+}
+
 func handleClient(client net.Conn) {
     for {
-        message := make([]byte, 10)
-        bytes, err := client.Read(message)
-        stringMessage := string(message[:bytes])
+        message, err := read(client)
 
         if (err != nil) {
-            fmt.Println("Error when reading from socket.", err)
+            fmt.Println(err)
             client.Close()
             break
         } else {
-            fmt.Print(stringMessage)
+            fmt.Println(message)
             _, errWrite := client.Write([]byte("Message recieved!"))
             if (errWrite != nil) { fmt.Println(errWrite) }
         }
-        if (stringMessage == "stop\n") {
+        if (message == "stop\n") {
             break
         }
-        if (stringMessage == "close\n") {
+        if (message == "close\n") {
             client.Close()
+        }
+    }
+}
+
+func forceShutDown(listener net.Listener, client net.Conn) {
+    for {
+        var shutdown string
+        fmt.Scanf("%s", &shutdown)
+
+        if (shutdown == "shutdown") {
+            listener.Close()
+            client.Close()
+            break
         }
     }
 }
 
 func main() {
     var port int
-    _, err := fmt.Scanf("%d", &port) 
+    _, err := fmt.Scanf("%d", &port)
     if (err != nil) {
         fmt.Println("Couldn't read user argument.")
     } else {
