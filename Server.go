@@ -39,6 +39,7 @@ func read(client net.Conn) (string, error) {
         return "", errors.New("Error couldn't get how many bytes that will be sent.")
     }
     bytes, _ := strconv.Atoi(string(holder))
+    fmt.Println(holder)
     message := ""   
     
     for (bytes != 0) {
@@ -47,8 +48,8 @@ func read(client net.Conn) (string, error) {
             //fmt.Println("Error when reading from client.")
             return "", errors.New("Error when reading from client.")
         }
-        
-        message += string(holder)
+        fmt.Println(holder)
+        message += string(holder[:])
         bytes--
     }
     return string(message[:]), nil
