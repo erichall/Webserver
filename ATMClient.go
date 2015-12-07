@@ -35,6 +35,18 @@ func getAddr() (string, string) {
 	return ip, port
 }
 
+func transform(msg []byte) []byte {
+    tmp := make([]byte, 10)
+    
+    for index := 0; index < len(msg); index++ {
+        if (msg[index] == 10) {
+            break
+        }
+        tmp[index] = msg[index]
+    }
+    return tmp
+}
+
 func write(connection net.Conn, msg []byte) {
 	size := binary.Size(msg)
 	//fmt.Println(size)
@@ -44,7 +56,8 @@ func write(connection net.Conn, msg []byte) {
 	connection.Write([]byte(strconv.Itoa(int(sendSize))))
 	
 	if size <= 10 {
-		connection.Write(msg)
+        tmp := transform(msg)
+		connection.Write(tmp)
 	}else {
 		for i := 1; i < size; i++ {
 			tmpMsg[looper-1] += msg[i-1]
@@ -67,7 +80,11 @@ func client(){
 	_, port := getAddr()
 	fmt.Println(port)
 	//connection, err := net.Dial("tcp", (ip + ":" + port))
+<<<<<<< HEAD
 	connection, err := net.Dial("tcp", ("127.0.0.1" + ":" + "8081")) //connection is conn object
+=======
+	connection, err := net.Dial("tcp", ("130.237.223.33" + ":" + "2345")) //connection is conn object
+>>>>>>> f71d9cea94f596a3754aeeceff7df897031dcd6d
 
 	if err != nil {
 		fmt.Println(err)
