@@ -62,26 +62,29 @@ func read(client net.Conn) (string, error) {
     return message, nil
 }
 
-func handleClient(client net.Conn) {
-    for {
-        message, err := read(client)
 
-        if (err != nil) {
-            fmt.Println(err)
-            client.Close()
-            break
-        } else {
-            fmt.Println(message)
-            _, errWrite := client.Write([]byte("Message recieved!"))
-            if (errWrite != nil) { fmt.Println(errWrite) }
-        }
-        if (message == "stop\n") {
-            break
-        }
-        if (message == "close\n") {
-            client.Close()
-        }
-    }
+func handleClient(client net.Conn) {
+	for {
+		msg := make([]byte,100)
+		fmt.Println(client.Read(msg))
+		message, err := read(client)
+	    
+		if (err != nil) {
+			fmt.Println(err)
+			client.Close()
+			break
+		} else {
+			fmt.Println(message)
+			_, errWrite := client.Write([]byte("Message recieved!"))
+			if (errWrite != nil) { fmt.Println(errWrite) }
+		}
+		if (message == "stop\n") {
+			break
+		}
+		if (message == "close\n") {
+			client.Close()
+		}
+	}
 }
 
 func forceShutDown(listener net.Listener, client net.Conn) {
