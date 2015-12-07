@@ -48,7 +48,7 @@ func write(connection net.Conn, msg []byte) {
 	}else {
 		for i := 1; i < size; i++ {
 			tmpMsg[looper-1] += msg[i-1]
-			fmt.Println(msg[i])
+			//fmt.Println(msg[i])
 			if i % 10 == 0 {
 				fmt.Println(tmpMsg)
 				tmpMsg = make([]byte,10)
@@ -67,7 +67,7 @@ func client(){
 	_, port := getAddr()
 	fmt.Println(port)
 	//connection, err := net.Dial("tcp", (ip + ":" + port))
-	connection, err := net.Dial("tcp", ("130.237.223.107" + ":" + "2345")) //connection is conn object
+	connection, err := net.Dial("tcp", ("127.0.0.1" + ":" + "8081")) //connection is conn object
 
 	if err != nil {
 		fmt.Println(err)
@@ -82,15 +82,6 @@ func client(){
 			fmt.Println(err)
 			return
 		}	
-	//	_,writeError := connection.Write([]byte(msg))
-
-		
-	/**	if(writeError != nil){
-			connection.Close()
-			fmt.Println(writeError)
-			return
-		}
-*/
 		write(connection,msg)
 
 		incmsg := make([]byte, 10)

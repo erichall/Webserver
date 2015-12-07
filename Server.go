@@ -34,21 +34,22 @@ func server(port int) {
 func read(client net.Conn) (string, error) {
     holder := make([]byte, 10)
     _, err := client.Read(holder)
-    if (err != nil) {
-        //fmt.Println("Error couldn't get how many bytes that will be sent.")
+
+	if (err != nil) {
         return "", errors.New("Error couldn't get how many bytes that will be sent.")
-    }
+	}
+	
     bytes, _ := strconv.Atoi(string(holder))
-    fmt.Println(holder)
+	fmt.Println(string(holder[:]))
+	fmt.Println(bytes)
     message := ""   
     
     for (bytes != 0) {
         _, err := client.Read(holder)
         if (err != nil) {
-            //fmt.Println("Error when reading from client.")
             return "", errors.New("Error when reading from client.")
         }
-        fmt.Println(holder)
+	    fmt.Println(holder[:])
         message += string(holder[:])
         bytes--
     }
@@ -56,25 +57,27 @@ func read(client net.Conn) (string, error) {
 }
 
 func handleClient(client net.Conn) {
-    for {
-        message, err := read(client)
-
-        if (err != nil) {
-            fmt.Println(err)
-            client.Close()
-            break
-        } else {
-            fmt.Println(message)
-            _, errWrite := client.Write([]byte("Message recieved!"))
-            if (errWrite != nil) { fmt.Println(errWrite) }
-        }
-        if (message == "stop\n") {
-            break
-        }
-        if (message == "close\n") {
-            client.Close()
-        }
-    }
+	for {
+		msg := make([]byte,100)
+		fmt.Println(client.Read(msg))
+		message, err := read(client)
+	    
+		if (err != nil) {
+			fmt.Println(err)
+			client.Close()
+			break
+		} else {
+			fmt.Println(message)
+			_, errWrite := client.Write([]byte("Message recieved!"))
+			if (errWrite != nil) { fmt.Println(errWrite) }
+		}
+		if (message == "stop\n") {
+			break
+		}
+		if (message == "close\n") {
+			client.Close()
+		}
+	}
 }
 
 func forceShutDown(listener net.Listener, client net.Conn) {
