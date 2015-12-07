@@ -1,5 +1,6 @@
 package main
 
+// Import packages.
 import (
     "fmt"
     "net"
@@ -35,38 +36,29 @@ func read(client net.Conn) (string, error) {
     holder := make([]byte, 10)
     number, err := client.Read(holder)
     if (err != nil) {
-        //fmt.Println("Error couldn't get how many bytes that will be sent.")
         return "", errors.New("Error couldn't get how many bytes that will be sent.")
     }
-
-    bytes, _ := strconv.Atoi(string(holder[0:number]))
-    bytes++
-    fmt.Println(bytes)
+    bytes, conerr := strconv.Atoi(string(holder[0:number]))
+    if (conerr != nil) {
+        return "", errors.New("Could not convert data to byte.")
+    }
     message := ""   
-    
-    //holder = make([]byte, 10)
 
-    for (bytes != 0) {
-        fmt.Println("Enter loop!")
-        letters, err := client.Read(holder)
-        fmt.Println("Read from client.")
-        if (err != nil) {
-            //fmt.Println("Error when reading from client.")
+    for bytes != 0 {
+        letters, Rederr := client.Read(holder)
+        if (Rederr != nil) {
             return "", errors.New("Error when reading from client.")
         }
-        fmt.Println(holder)
         message += string(holder[0:letters])
-        //fmt.Print(message)
         bytes--
     }
+
     return message, nil
 }
 
 
 func handleClient(client net.Conn) {
 	for {
-		msg := make([]byte,100)
-		fmt.Println(client.Read(msg))
 		message, err := read(client)
 	    
 		if (err != nil) {
@@ -74,15 +66,11 @@ func handleClient(client net.Conn) {
 			client.Close()
 			break
 		} else {
-			fmt.Println(message)
+			fmt.Print(message)
 			_, errWrite := client.Write([]byte("Message recieved!"))
-			if (errWrite != nil) { fmt.Println(errWrite) }
-		}
-		if (message == "stop\n") {
-			break
-		}
-		if (message == "close\n") {
-			client.Close()
+			if (errWrite != nil) { 
+                fmt.Println(errWrite) 
+            }
 		}
 	}
 }
