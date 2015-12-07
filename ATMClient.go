@@ -80,11 +80,9 @@ func client(){
 	_, port := getAddr()
 	fmt.Println(port)
 	//connection, err := net.Dial("tcp", (ip + ":" + port))
-<<<<<<< HEAD
-	connection, err := net.Dial("tcp", ("127.0.0.1" + ":" + "8081")) //connection is conn object
-=======
+
 	connection, err := net.Dial("tcp", ("130.237.223.33" + ":" + "2345")) //connection is conn object
->>>>>>> f71d9cea94f596a3754aeeceff7df897031dcd6d
+
 
 	if err != nil {
 		fmt.Println(err)
