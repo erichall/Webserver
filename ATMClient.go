@@ -8,7 +8,7 @@ import (
 	//"strings"
 	"encoding/binary"
 	"strconv"
-	"math"
+	//"math"
 )
 
 func main() {
@@ -39,41 +39,30 @@ func transform(msg []byte) []byte {
     tmp := make([]byte, 10)
     
     for index := 0; index < len(msg); index++ {
-        if (msg[index] == 10) {
-            break
-        }
-        tmp[index] = msg[index]
+	    if (msg[index] == 10) {
+		    tmp[index] = msg[index]
+		    break
+	    }
+	    tmp[index] = msg[index]
     }
     return tmp
 }
 
 func write(connection net.Conn, msg []byte) {
 	size := binary.Size(msg)
-	//fmt.Println(size)
-	var tmpMsg = make([]byte, 10)
-	var looper int = 1
-	var sendSize float64 = math.Ceil(float64(size/10))
-	connection.Write([]byte(strconv.Itoa(int(sendSize))))
-	
-	if size <= 10 {
-        tmp := transform(msg)
-		connection.Write(tmp)
-	}else {
-		for i := 1; i < size; i++ {
-			tmpMsg[looper-1] += msg[i-1]
-			//fmt.Println(msg[i])
-			if i % 10 == 0 {
-				fmt.Println(tmpMsg)
-				tmpMsg = make([]byte,10)
-				looper = 0
-				connection.Write(tmpMsg)
-			}else if size-1 == i {
-				fmt.Println(tmpMsg)
-				connection.Write(tmpMsg)
-			}
-			looper += 1
-		}
+	sendSize := size/10
+	if (size % 10 != 0) {
+		sendSize++
 	}
+	fmt.Println(sendSize)
+	connection.Write([]byte(strconv.Itoa(sendSize)))
+
+	for times := 1; times != sendSize; times++ {
+		prev := 10*(times-1)
+		connection.Write(msg[prev:(10*times)])
+	}
+	connection.Write(msg[10*(sendSize-1):])
+	
 }
 
 func client(){
@@ -99,10 +88,10 @@ func client(){
 		}	
 		write(connection,msg)
 
-		incmsg := make([]byte, 10)
-		bytes,_ := connection.Read(incmsg)
-		stringMsg := string(incmsg[:bytes])
-		fmt.Println(stringMsg)
+	//	incmsg := make([]byte, 10)
+	//	bytes,_ := connection.Read(incmsg)
+	//	stringMsg := string(incmsg[:bytes])
+	//	fmt.Println(stringMsg)
 	
 		
 	}
