@@ -44,7 +44,7 @@ func read(client net.Conn) (string, error) {
     fmt.Println(bytes)
     message := ""   
     
-    holder = make([]byte, 10)
+    //holder = make([]byte, 10)
 
     for (bytes != 0) {
         fmt.Println("Enter loop!")
@@ -56,7 +56,7 @@ func read(client net.Conn) (string, error) {
         }
         fmt.Println(holder)
         message += string(holder[0:letters])
-        fmt.Print(message)
+        //fmt.Print(message)
         bytes--
     }
     return message, nil
