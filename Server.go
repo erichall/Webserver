@@ -2,11 +2,26 @@ package main
 
 // Import packages.
 import (
-    "fmt"
-    "net"
-    "strconv"
-    "errors"
+	"fmt"
+	"net"
+	"strconv"
+	"errors"
+//	"io/ioutil"
+	"os"
+	"encoding/binary"
+	"bufio"
+	"strings"
+	
 )
+
+type User struct {
+	card_number int
+	first_name string
+	last_name string
+	sifferkod int
+	enkod []int
+	saldo int
+}
 
 func server(port int) {
     fmt.Println("Server startup!")
@@ -128,6 +143,69 @@ func main() {
     if (err != nil) {
         fmt.Println("Couldn't read user argument.")
     } else {
-        server(port)
+	    user, errUser := findUser("123456")
+	    check(errUser)
+	    fmt.Println(user)
+	   // server(port)
     }
+}
+
+func check(e error){
+	if e != nil {
+		panic(e)
+	}
+}
+
+func findUser(kortnummer string) (User, error){
+	filen,err := os.Open("/home/erkan/Desktop/CDATA/PROGP/WEBSERVER/databas.txt")
+	check(err)
+
+	scanner := bufio.NewScanner(filen)
+
+	
+	fmt.Println(scanner.Text())
+
+	var found_flag int = 0
+	var stop_read int = 0
+
+	
+	var userdata [6]string 
+	for scanner.Scan(){
+		if stop_read < 6 {
+			if scanner.Text() == kortnummer {
+				found_flag = 1
+			}
+
+			if found_flag == 1 {
+				userdata[stop_read] = scanner.Text()
+				stop_read++
+				
+			}
+		}
+	}
+
+	if len(userdata) == 0 {
+		lol := new(User)
+		return *lol, errors.New("Kan ikke hitta")
+	}
+
+	tmpenkod := strings.Split(userdata[4], " ")
+	var intkodlist []int = make([]int, len(tmpenkod))
+	
+
+	for index, elem := range tmpenkod {
+		intkodlist[index],_ = strconv.Atoi(elem)
+	} 
+
+	card_number,_ := strconv.Atoi(userdata[0])
+	sifferkod,_ :=  strconv.Atoi(userdata[3])
+	saldo,_ := strconv.Atoi(userdata[5])
+	user := User{card_number,
+		userdata[1],
+		userdata[2],
+		sifferkod,
+		intkodlist,
+		saldo}
+
+	return user,nil
 }
