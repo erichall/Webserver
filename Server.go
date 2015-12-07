@@ -33,26 +33,33 @@ func server(port int) {
 
 func read(client net.Conn) (string, error) {
     holder := make([]byte, 10)
-    _, err := client.Read(holder)
+    number, err := client.Read(holder)
     if (err != nil) {
         //fmt.Println("Error couldn't get how many bytes that will be sent.")
         return "", errors.New("Error couldn't get how many bytes that will be sent.")
     }
-    bytes, _ := strconv.Atoi(string(holder))
-    fmt.Println(holder)
+
+    bytes, _ := strconv.Atoi(string(holder[0:number]))
+    bytes++
+    fmt.Println(bytes)
     message := ""   
     
+    holder = make([]byte, 10)
+
     for (bytes != 0) {
-        _, err := client.Read(holder)
+        fmt.Println("Enter loop!")
+        letters, err := client.Read(holder)
+        fmt.Println("Read from client.")
         if (err != nil) {
             //fmt.Println("Error when reading from client.")
             return "", errors.New("Error when reading from client.")
         }
         fmt.Println(holder)
-        message += string(holder[:])
+        message += string(holder[0:letters])
+        fmt.Print(message)
         bytes--
     }
-    return string(message[:]), nil
+    return message, nil
 }
 
 func handleClient(client net.Conn) {
