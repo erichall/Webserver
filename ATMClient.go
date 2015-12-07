@@ -55,26 +55,42 @@ func write(connection net.Conn, msg []byte) {
 		sendSize++
 	}
 	fmt.Println(sendSize)
-	connection.Write([]byte(strconv.Itoa(sendSize)))
+	_, sizeError := connection.Write([]byte(strconv.Itoa(sendSize)))
+
+	if sizeError != nil {
+		fmt.Println(sizeError)
+		os.Exit(1)
+		return
+	}
 
 	for times := 1; times != sendSize; times++ {
 		prev := 10*(times-1)
-		connection.Write(msg[prev:(10*times)])
+		_, timesError := connection.Write(msg[prev:(10*times)])
+		if timesError != nil {
+			fmt.Println(timesError)
+			os.Exit(1)
+			return
+		}
 	}
-	connection.Write(msg[10*(sendSize-1):])
+	_, restError := connection.Write(msg[10*(sendSize-1):])
+
+	if restError != nil {
+		fmt.Println(restError)
+		os.Exit(1)
+		return
+	}
 	
 }
 
 func client(){
 	_, port := getAddr()
 	fmt.Println(port)
-	//connection, err := net.Dial("tcp", (ip + ":" + port))
-
 	connection, err := net.Dial("tcp", ("130.237.223.33" + ":" + "2345")) //connection is conn object
 
 
 	if err != nil {
 		fmt.Println(err)
+		os.Exit(1)
 		return
 	}
 
@@ -84,14 +100,15 @@ func client(){
 		fmt.Println(msg)
 		if( error != nil){
 			fmt.Println(err)
+			os.Exit(1)
 			return
 		}	
 		write(connection,msg)
 
-	//	incmsg := make([]byte, 10)
-	//	bytes,_ := connection.Read(incmsg)
-	//	stringMsg := string(incmsg[:bytes])
-	//	fmt.Println(stringMsg)
+		incmsg := make([]byte, 10)
+		bytes,_ := connection.Read(incmsg)
+		stringMsg := string(incmsg[:bytes])
+		fmt.Println(stringMsg)
 	
 		
 	}
