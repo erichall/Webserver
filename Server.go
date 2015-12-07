@@ -56,6 +56,40 @@ func read(client net.Conn) (string, error) {
     return message, nil
 }
 
+func write(connection net.Conn, msg []byte) {
+	size := binary.Size(msg)
+	sendSize := size/10
+	if (size % 10 != 0) {
+		sendSize++
+	}
+	fmt.Println(sendSize)
+	_, sizeError := connection.Write([]byte(strconv.Itoa(sendSize)))
+
+	if sizeError != nil {
+		fmt.Println(sizeError)
+		os.Exit(1)
+		return
+	}
+
+	for times := 1; times != sendSize; times++ {
+		prev := 10*(times-1)
+		_, timesError := connection.Write(msg[prev:(10*times)])
+		if timesError != nil {
+			fmt.Println(timesError)
+			os.Exit(1)
+			return
+		}
+	}
+	_, restError := connection.Write(msg[10*(sendSize-1):])
+
+	if restError != nil {
+		fmt.Println(restError)
+		os.Exit(1)
+		return
+	}
+	
+}
+
 
 func handleClient(client net.Conn) {
 	for {

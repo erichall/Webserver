@@ -15,6 +15,30 @@ func main() {
 	client()
 }
 
+func read(client net.Conn) (string, error) {
+    holder := make([]byte, 10)
+    number, err := client.Read(holder)
+    if (err != nil) {
+        return "", errors.New("Error couldn't get how many bytes that will be sent.")
+    }
+    bytes, conerr := strconv.Atoi(string(holder[0:number]))
+    if (conerr != nil) {
+        return "", errors.New("Could not convert data to byte.")
+    }
+    message := ""   
+
+    for bytes != 0 {
+        letters, Rederr := client.Read(holder)
+        if (Rederr != nil) {
+            return "", errors.New("Error when reading from client.")
+        }
+        message += string(holder[0:letters])
+        bytes--
+    }
+
+    return message, nil
+}
+
 func getAddr() (string, string) {
 	var ip string
 	var port string
@@ -33,19 +57,6 @@ func getAddr() (string, string) {
 	}
 	
 	return ip, port
-}
-
-func transform(msg []byte) []byte {
-    tmp := make([]byte, 10)
-    
-    for index := 0; index < len(msg); index++ {
-	    if (msg[index] == 10) {
-		    tmp[index] = msg[index]
-		    break
-	    }
-	    tmp[index] = msg[index]
-    }
-    return tmp
 }
 
 func write(connection net.Conn, msg []byte) {
