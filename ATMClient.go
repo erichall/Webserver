@@ -188,7 +188,7 @@ func handlingRequests(connection net.Conn) {
 //client starts the client.
 func client(){
     // Connect to the server through tcp/IP.
-	connection, err := net.Dial("tcp", ("130.237.227.50" + ":" + "5555"))
+	connection, err := net.Dial("tcp", ("192.168.0.16" + ":" + "5555"))
     // If connection failed crash.
 	check(err)
     //Configure the language.

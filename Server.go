@@ -10,12 +10,11 @@ import (
 	"fmt"
 	"net"
 	"strconv"
-	//"errors"
 	"os"
-	//"encoding/binary"
 	"bufio"
 	"strings"
-	
+	"sync"
+	"runtime"
 )
 
 //Global variable that indicate how many language the client support.
@@ -35,6 +34,12 @@ type User struct {
 	sifferkod int
 	enkod []int
 	saldo int
+	mutex sync.Mutex
+}
+
+func init() {
+	cpus := runtime.NumCPU() //Get how many cpus the server comuter has.
+	runtime.GOMAXPROCS(cpus) //Set the program to use all cpus for parallel computation.	
 }
 
 /*Hanterar servern, 
@@ -109,8 +114,8 @@ func loginSetup(connection net.Conn, lines []string) *User{
 		if err != nil {
 			write(connection, []byte(lines[6] + "\n" + lines[1]))
 		} else {
-			for _, u := range(users) {
-				if(u.card_number == cardnumber){
+			for index := range(users) {
+				if(users[index].card_number == cardnumber){
 					write(connection, []byte(lines[2]))
 					for {
 					    
@@ -118,10 +123,10 @@ func loginSetup(connection net.Conn, lines []string) *User{
 					    sifferkod, sifferError := strconv.Atoi(tmpkod)
 					    if sifferError != nil {
 						    write(connection, []byte(lines[6]+"\n" + lines[2]))
-					    }else if u.sifferkod == sifferkod {
+					    }else if users[index].sifferkod == sifferkod {
 						    write(connection, []byte("approved"))
 						    write(connection, []byte(lines[3]))
-						    return &u
+						    return &users[index]
 					    }else {
 						    write(connection, []byte(lines[6] + "\n" + lines[2]))
 					    }
@@ -166,6 +171,7 @@ func handleClient(client net.Conn, lines []string, user *User) {
 	stillconnected := true
 	for stillconnected {
 		input := strings.TrimSpace(read(client))
+		user.mutex.Lock()
 		switch input {
 		case "1" : //saldo
 			tmpsaldo := strconv.Itoa((*user).saldo)
@@ -173,11 +179,11 @@ func handleClient(client net.Conn, lines []string, user *User) {
 		case "2" : //whitdraw
 			write(client, []byte(lines[7]))
 			amount,_ := strconv.Atoi(read(client))
-			(*user).saldo = (*user).saldo - amount
+			user.saldo = (*user).saldo - amount
 		case "3" : //deposit
 			write(client, []byte(lines[7]))
 			amount,_ := strconv.Atoi(read(client))
-			(*user).saldo = (*user).saldo + amount
+			user.saldo = (*user).saldo + amount
 		case "4" : // Exit
 			write(client, []byte(lines[8]))
 			client.Close()
@@ -185,8 +191,8 @@ func handleClient(client net.Conn, lines []string, user *User) {
 		default:
 			write(client, []byte("hmmm what u say"))
 		}
-	
-            }
+		user.mutex.Unlock()
+    }
 
 }
 
@@ -258,7 +264,8 @@ func findUser() {
 				userdata[2],
 				sifferkod,
 				intkodlist,
-				saldo}
+				saldo,
+				sync.Mutex{}}
 		
 			users = append(users, user)
 			stop_read = 0
