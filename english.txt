@@ -5,3 +5,5 @@ Authentication valid. Welcome to Horizon bank, the bank of tomorrow today!
 What would you like to do?
 (1)Balance, (2)Withdrawal, (3)Deposit, (4)Exit
 Authentication invalid, please try again.
+Amount:
+Thank you for being a customer at Horizon bank. Enjoy the rest of your day.

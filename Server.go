@@ -18,12 +18,13 @@ import (
 	
 )
 
+//Global variable that indicate how many language the client support.
 var (
 	users []User
 
-	//Global variable that indicate how many language the client support.
-	languages = "english\n日本語\ndeutsch"
-	intro = "Please pick a language.\n言語を選択してください。\nBitte wählen Sie eine Sprache aus.\n"
+    languages = "english\n日本語\ndeutsch"
+    intro = "Please pick a language.\n言語を選択してください。\nBitte wählen Sie eine Sprache aus.\n"
+    end = "Please pick a real language.\n実際の言語を選択してください。\nBitte wählen Sie eine echte Sprache.\n"
 )
 
 /*User struct definierar all information om en user.*/
@@ -51,8 +52,8 @@ func server(port int) {
 
 	for {
 		connection, err := listener.Accept() //Accept
-
-		go forceShutDown(listener,connection)
+        //Create thread to end connection if established.
+		go forceShutDown(listener,connection) 
 
 		if (err != nil) {
 			fmt.Println("Failed to establish connection.")
@@ -92,18 +93,14 @@ func validateLang(connection net.Conn){
 		if (len(lines) != 0) {
 			break
 		} else {
-			write(connection, []byte("Please pick a real language"))
+			write(connection, []byte(end))
 		}
 	}
 	user := loginSetup(connection,lines)
 	handleClient(connection, lines, user)
 }
 
-
-
-
-
-func loginSetup(connection net.Conn, lines []string) User{	
+func loginSetup(connection net.Conn, lines []string) *User{	
 	write(connection, []byte(lines[0]))
 	write(connection, []byte(lines[1])) //Fråga efter kortnummer
 	for {
@@ -124,7 +121,7 @@ func loginSetup(connection net.Conn, lines []string) User{
 					    }else if u.sifferkod == sifferkod {
 						    write(connection, []byte("approved"))
 						    write(connection, []byte(lines[3]))
-						    return u
+						    return &u
 					    }else {
 						    write(connection, []byte(lines[6] + "\n" + lines[2]))
 					    }
@@ -132,11 +129,10 @@ func loginSetup(connection net.Conn, lines []string) User{
 				}
 			}
 			write(connection, []byte(lines[6] + "\n" + lines[1]))
-		
 		}
 	}
 	
-	return *new(User)
+	return new(User)
 	
 }
 func format(rest []byte) []byte {
@@ -163,7 +159,7 @@ func wait(connection net.Conn) {
 	}
 }
 
-func handleClient(client net.Conn, lines []string, user User) {
+func handleClient(client net.Conn, lines []string, user *User) {
 	write(client, []byte(lines[4]))
 	write(client, []byte(lines[5]))
 
@@ -172,18 +168,18 @@ func handleClient(client net.Conn, lines []string, user User) {
 		input := strings.TrimSpace(read(client))
 		switch input {
 		case "1" : //saldo
-			tmpsaldo := strconv.Itoa(user.saldo)
+			tmpsaldo := strconv.Itoa((*user).saldo)
 			write(client, []byte(tmpsaldo))
 		case "2" : //whitdraw
-			write(client, []byte("Amount:"))
+			write(client, []byte(lines[7]))
 			amount,_ := strconv.Atoi(read(client))
-			user.saldo = user.saldo - amount
+			(*user).saldo = (*user).saldo - amount
 		case "3" : //deposit
-			write(client, []byte("Amount:"))
+			write(client, []byte(lines[7]))
 			amount,_ := strconv.Atoi(read(client))
-			user.saldo = user.saldo + amount
+			(*user).saldo = (*user).saldo + amount
 		case "4" : // Exit
-			write(client, []byte("GOOOOOOOOOOOOOOOOODBYE"))
+			write(client, []byte(lines[8]))
 			client.Close()
 			stillconnected = false
 		default:
@@ -213,7 +209,7 @@ func main() {
     if (err != nil) {
         fmt.Println("Couldn't read user argument.")
     } else {
-	    users = findUser()
+	    findUser()
 	    server(port)
     }
 }
@@ -225,8 +221,9 @@ func check(e error){
 	}
 }
 
-func findUser() ([]User){
-	filen,err := os.Open("/home/erkan/Desktop/CDATA/PROGP/WEBSERVER/databas.txt")
+func findUser() {
+	//filen,err := os.Open("/home/erkan/Desktop/CDATA/PROGP/WEBSERVER/databas.txt")
+    filen,err := os.Open("databas.txt")
 	check(err)
 	
 	scanner := bufio.NewScanner(filen)
@@ -239,8 +236,6 @@ func findUser() ([]User){
 	var user_info int = 6 //Hur många rader i databasen som består av en user.
 	
 	var userdata []string = make([]string, 6)
-
-	var users []User
 
 	
 	for i := 1; scanner.Scan(); i++ {
@@ -270,7 +265,6 @@ func findUser() ([]User){
 			userdata = make([]string, 6)
 		}
 	}
-	return users
 }
 
 

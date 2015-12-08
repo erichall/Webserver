@@ -5,3 +5,5 @@ Authentifizierung gültig. Willkommen bei Horizon Bank, die Bank von morgen scho
 Was würdest du gern tun?
 (1) Gleichgewicht, (2) Widerrufsrecht , (3) Hotelsafe (4) Beenden
 Authentifizierung ungültig Bitte versuchen Sie es erneut.
+Menge:
+Danke, dass Sie ein Kunde im Horizon Bank. Genieß 'den Rest deines Tages.

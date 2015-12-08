@@ -9,13 +9,6 @@ import (
 	"strings"
 )
 
-//Global variable that indicate how many language the client support.
-var languages = [...]string {"English","日本語","Deutsch"}
-var intro = [...]string {"Please pick a language.","言語を選択してください。","Bitte wählen Sie eine Sprache aus."}
-
-//Global variable that hold the language that the user chose.
-var text []string
-
 //Global reader that will read what the user writes.
 var reader *bufio.Reader = bufio.NewReader(os.Stdin)
 
@@ -144,13 +137,13 @@ func loginSetUp(connection net.Conn) {
     fmt.Print(cardText)
     
     for {
-        card := userInput()
+        card := strings.Replace(string(userInput()), " ", "", -1)
         write(connection, []byte(card))
         fmt.Print(read(connection))
         password := userInput()
         write(connection, []byte(password))
     
-        ans := read(connection)
+        ans := strings.TrimSpace(read(connection))
         if ans == "approved" {
             fmt.Println(read(connection))
             break
@@ -195,7 +188,7 @@ func handlingRequests(connection net.Conn) {
 //client starts the client.
 func client(){
     // Connect to the server through tcp/IP.
-	connection, err := net.Dial("tcp", ("130.229.156.183" + ":" + "2333"))
+	connection, err := net.Dial("tcp", ("130.237.227.50" + ":" + "5555"))
     // If connection failed crash.
 	check(err)
     //Configure the language.
