@@ -9,14 +9,18 @@ import (
 	"strings"
 	"encoding/binary"
 	"strconv"
+    "errors"
 )
 
 //Global variable that indicate how many language the client support.
-languages := "English","日本語","Deutsch"}
-var intro []string = ["Please pick a language.","言語を選択してください。","Bitte wählen Sie eine Sprache aus."]
+var languages = [...]string {"English","日本語","Deutsch"}
+var intro = [...]string {"Please pick a language.","言語を選択してください。","Bitte wählen Sie eine Sprache aus."}
 
 //Global variable that hold the language that the user chose.
 var text []string
+
+//Global reader that will read what the user writes.
+var reader *bufio.Reader = bufio.NewReader(os.Stdin)
 
 //main function that will create the client.
 func main() {
@@ -134,14 +138,14 @@ func languageConfig() {
         if (valid) {
             lang = lang + ".txt"
             file, err := os.Open(lang)
-            defer file.Close()
             check(err)
 
             var lines []string
             scanner := bufio.NewScanner(file)
             for scanner.Scan() {
-		        lines += scanner.Text()
+		        lines = append(lines, scanner.Text())
 	        }
+            file.Close()
 	        check(scanner.Err())
             text = lines
 
@@ -152,38 +156,32 @@ func languageConfig() {
     }
 }
 
+func userInput() string {
+    msg, err := reader.ReadBytes('\n')
+	check(err)
+    return string(msg)
+}
+
 //client starts the client.
 func client(){
-	//_, port := getAddr()
-	//fmt.Println(port)
     // Connect to the server through tcp/IP.
-	connection, err := net.Dial("tcp", ("130.237.223.33" + ":" + "2345"))
+	//connection, err := net.Dial("tcp", ("130.237.223.33" + ":" + "2345"))
     // If connection failed crash.
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-		return
-	}
+	//check(err)
+    //Configure the language.
     languageConfig()
     //Wait for server to send how the user can login.
-    read(connection)
+    //login := read(connection)
 
-	reader := bufio.NewReader(os.Stdin)
-	for  {
-		msg, error := reader.ReadBytes('\n')
-		fmt.Println(msg)
-		if( error != nil){
-			fmt.Println(err)
-			os.Exit(1)
-			return
-		}	
-		write(connection,msg)
-
-		incmsg := make([]byte, 10)
-		bytes,_ := connection.Read(incmsg)
-		stringMsg := string(incmsg[:bytes])
-		fmt.Println(stringMsg)
-	
-		
-	}
+    fmt.Println(text[0])
+    fmt.Print(text[1])
+    cardnumber := userInput()
+    fmt.Println()
+    fmt.Print(text[2])
+    password := userInput()
+    
+    fmt.Println()
+    fmt.Println(text)
+    fmt.Println("Cardnumber = ", cardnumber)
+    fmt.Println("Password = ", password)
 }
