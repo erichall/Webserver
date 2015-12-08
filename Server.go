@@ -1,3 +1,8 @@
+/*
+Webserver
+Koden är skriven av Johannes Westlund & Eric Hallström
+Senast modifierad : 2015-12-08 
+*/
 package main
 
 // Import packages.
@@ -6,14 +11,13 @@ import (
 	"net"
 	"strconv"
 	"errors"
-//	"io/ioutil"
 	"os"
 	"encoding/binary"
 	"bufio"
 	"strings"
 	
 )
-
+/*User struct definierar all information om en user.*/
 type User struct {
 	card_number int
 	first_name string
@@ -23,52 +27,67 @@ type User struct {
 	saldo int
 }
 
+/*Hanterar servern, 
+input : Vilken port srv ska ligga på*/
 func server(port int) {
-    fmt.Println("Server startup!")
-    stringPort := strconv.Itoa(port)
-    // start listening to a part
-    listener, err := net.Listen("tcp", ":" + stringPort)
-    if (err != nil) {
-        fmt.Println("Couldn't listen on port " + stringPort)
-        return
-    }
-    for {
-        connection, err := listener.Accept()
-        fmt.Println("Connection established!")
+	fmt.Println("Server startup!")
+	stringPort := strconv.Itoa(port) 
 
-         go forceShutDown(listener, connection) 
+	// start listening to a port
+	listener, err := net.Listen("tcp", ":" + stringPort)
+	if (err != nil) {
+		fmt.Println("Couldn't listen on port " + stringPort)
+		return
+	}
 
-        if (err != nil) {
-            fmt.Println("Failed to establish connection.")
-            break
-        } else {
-            go handleClient(connection)
-        }
-    }
+	for {
+		connection, err := listener.Accept() //Acceptera incomming connection
+		fmt.Println("Connection established!") 
+
+		go forceShutDown(listener, connection) //Goroutine för att stänga porten helt.
+
+		if (err != nil) {
+			fmt.Println("Failed to establish connection.")
+			break
+		} else {
+			go handleClient(connection) //Egen goroutin för varje användare
+		}
+	}
 }
-
+/*
+read läser inc data från clienter
+input : en net.Conn dvs en connection
+return : läst input oavsett längd, err om misslyckad
+Clienten börjar alltid med att skicka längden på sitt meddelande i bytes
+*/
 func read(client net.Conn) (string, error) {
-    holder := make([]byte, 10)
-    number, err := client.Read(holder)
-    if (err != nil) {
-        return "", errors.New("Error couldn't get how many bytes that will be sent.")
-    }
-    bytes, conerr := strconv.Atoi(string(holder[0:number]))
-    if (conerr != nil) {
-        return "", errors.New("Could not convert data to byte.")
-    }
-    message := ""   
+	holder := make([]byte, 10) //byte array för att spara inc data max inc byte är 9999 999 999 = ca 9.9 miljarder
+	number, err := client.Read(holder) //number - antalet bytes som sändes
+	if (err != nil) {
+		return "", errors.New("Error couldn't get how many bytes that will be sent.")
+	}
+	
+	bytes, conerr := strconv.Atoi(string(holder[0:number])) //bytes := tar nu ut siffran för antal bytes som sändes
+	
+	if (conerr != nil) {
+		return "", errors.New("Could not convert data to byte.")
+	}
+	
+	message := ""   
 
-    for bytes != 0 {
-        letters, Rederr := client.Read(holder)
-        if (Rederr != nil) {
-            return "", errors.New("Error when reading from client.")
-        }
-        message += string(holder[0:letters])
-        bytes--
-    }
-
-    return message, nil
+	//samlar ihop hela meddelandet till ett message, loopar bytes gånger som sändes.
+	for bytes != 0 {
+		letters, Rederr := client.Read(holder) //Läser från client
+		
+		if (Rederr != nil) {
+			return "", errors.New("Error when reading from client.")
+		}
+		
+		message += string(holder[0:letters])
+		bytes--
+	}
+	
+	return message, nil
 }
 
 func write(connection net.Conn, msg []byte) {
@@ -143,9 +162,8 @@ func main() {
     if (err != nil) {
         fmt.Println("Couldn't read user argument.")
     } else {
-	    user, errUser := findUser("123456")
-	    check(errUser)
-	    fmt.Println(user)
+	    var users []User = findUser()
+	    fmt.Println(users[0])
 	   // server(port)
     }
 }
@@ -156,56 +174,57 @@ func check(e error){
 	}
 }
 
-func findUser(kortnummer string) (User, error){
+func findUser() ([]User){
 	filen,err := os.Open("/home/erkan/Desktop/CDATA/PROGP/WEBSERVER/databas.txt")
 	check(err)
-
+	
 	scanner := bufio.NewScanner(filen)
 
 	
 	fmt.Println(scanner.Text())
 
-	var found_flag int = 0
+
 	var stop_read int = 0
+	var user_info int = 6 //Hur många rader i databasen som består av en user.
+	
+	var userdata []string = make([]string, 6)
+
+	var users []User
 
 	
-	var userdata [6]string 
-	for scanner.Scan(){
-		if stop_read < 6 {
-			if scanner.Text() == kortnummer {
-				found_flag = 1
-			}
+	for i := 1; scanner.Scan(); i++ {
+		userdata[stop_read] = scanner.Text()
+		stop_read++	
+		if i % user_info == 0 {
+			tmpenkod := strings.Split(userdata[4], " ")
+			var intkodlist []int = make([]int, len(tmpenkod))
+	
 
-			if found_flag == 1 {
-				userdata[stop_read] = scanner.Text()
-				stop_read++
-				
-			}
+			for index, elem := range tmpenkod {
+				intkodlist[index],_ = strconv.Atoi(elem)
+			} 
+
+			card_number,_ := strconv.Atoi(userdata[0])
+			sifferkod,_ :=  strconv.Atoi(userdata[3])
+			saldo,_ := strconv.Atoi(userdata[5])
+			user := User{card_number,
+				userdata[1],
+				userdata[2],
+				sifferkod,
+				intkodlist,
+				saldo}
+		
+			users = append(users, user)
+			stop_read = 0
+			userdata = make([]string, 6)
 		}
-	}
 
-	if len(userdata) == 0 {
-		lol := new(User)
-		return *lol, errors.New("Kan ikke hitta")
-	}
-
-	tmpenkod := strings.Split(userdata[4], " ")
-	var intkodlist []int = make([]int, len(tmpenkod))
+		
 	
 
-	for index, elem := range tmpenkod {
-		intkodlist[index],_ = strconv.Atoi(elem)
-	} 
+	}
 
-	card_number,_ := strconv.Atoi(userdata[0])
-	sifferkod,_ :=  strconv.Atoi(userdata[3])
-	saldo,_ := strconv.Atoi(userdata[5])
-	user := User{card_number,
-		userdata[1],
-		userdata[2],
-		sifferkod,
-		intkodlist,
-		saldo}
+	
 
-	return user,nil
+	return users
 }
