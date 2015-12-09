@@ -15,12 +15,14 @@ import (
 	"strings"
 	"sync"
 	"runtime"
+	"io/ioutil"
 )
 
 //Global variable that indicate how many language the client support.
 var (
 	users []User
-
+	//Global reader that will read what the user writes.
+	 reader *bufio.Reader = bufio.NewReader(os.Stdin)
     languages = "english\n日本語\ndeutsch"
     intro = "Please pick a language.\n言語を選択してください。\nBitte wählen Sie eine Sprache aus.\n"
     end = "Please pick a real language.\n実際の言語を選択してください。\nBitte wählen Sie eine echte Sprache.\n"
@@ -64,11 +66,37 @@ func server(port int) {
 			fmt.Println("Failed to establish connection.")
 			break
 		} else {
+		//	go srvMaster(listener, connection)
 			go validateLang(connection)
 		}
 	}
 }
 
+func userInput() []byte {
+    msg, err := reader.ReadBytes('\n')
+	check(err)
+    if len(msg) == 0 {
+        msg = append(msg, 32)
+    }
+    //fmt.Println(msg)
+    return msg
+}
+
+func srvMaster(listener net.Listener, connection net.Conn){
+	for {
+		cmd := string(userInput())
+		fmt.Println(cmd, "ol")
+		switch cmd {
+		case "shutdown":
+			forceShutDown(listener, connection)
+		default:
+			fmt.Println(string(cmd))
+			
+		}
+		
+	}
+	
+}
 func validateLang(connection net.Conn){
 	write(connection,[]byte(intro + "\n" + languages))
 	var lines []string
@@ -109,7 +137,7 @@ func loginSetup(connection net.Conn, lines []string) *User{
 	write(connection, []byte(lines[0]))
 	write(connection, []byte(lines[1])) //Fråga efter kortnummer
 	for {
-		tmpcard := read(connection)
+		tmpcard := read(connection)//Läser in kortnr
 		cardnumber, err := strconv.Atoi(tmpcard)
 		if err != nil {
 			write(connection, []byte(lines[6] + "\n" + lines[1]))
@@ -118,14 +146,13 @@ func loginSetup(connection net.Conn, lines []string) *User{
 				if(users[index].card_number == cardnumber){
 					write(connection, []byte(lines[2]))
 					for {
-					    
 					    tmpkod := read(connection)
 					    sifferkod, sifferError := strconv.Atoi(tmpkod)
 					    if sifferError != nil {
 						    write(connection, []byte(lines[6]+"\n" + lines[2]))
 					    }else if users[index].sifferkod == sifferkod {
 						    write(connection, []byte("approved"))
-						    write(connection, []byte(lines[3]))
+						    write(connection, []byte(lines[3])) //welcome msg
 						    return &users[index]
 					    }else {
 						    write(connection, []byte(lines[6] + "\n" + lines[2]))
@@ -140,6 +167,7 @@ func loginSetup(connection net.Conn, lines []string) *User{
 	return new(User)
 	
 }
+
 func format(rest []byte) []byte {
 	tmp := make([]byte, 10)
 	for index := range tmp {
@@ -152,18 +180,6 @@ func format(rest []byte) []byte {
 	return tmp
 }
 
-func wait(connection net.Conn) {
-	holder := make([]byte, 1)
-	for {
-		num, _ := connection.Read(holder)
-	
-		fmt.Println(num)
-		if num != 0 {
-			break
-		}
-	}
-}
-
 func handleClient(client net.Conn, lines []string, user *User) {
 	write(client, []byte(lines[4]))
 	write(client, []byte(lines[5]))
@@ -171,12 +187,13 @@ func handleClient(client net.Conn, lines []string, user *User) {
 	stillconnected := true
 	for stillconnected {
 		input := strings.TrimSpace(read(client))
+		
 		user.mutex.Lock()
 		switch input {
 		case "1" : //saldo
 			tmpsaldo := strconv.Itoa((*user).saldo)
 			write(client, []byte(tmpsaldo))
-		case "2" : //whitdraw
+		case "2" : //whitdra
 			write(client, []byte(lines[7]))
 			amount,_ := strconv.Atoi(read(client))
 			user.saldo = (*user).saldo - amount
@@ -185,7 +202,7 @@ func handleClient(client net.Conn, lines []string, user *User) {
 			amount,_ := strconv.Atoi(read(client))
 			user.saldo = (*user).saldo + amount
 		case "4" : // Exit
-			write(client, []byte(lines[8]))
+			write(client, []byte(lines[8] +" " +user.first_name + " " +lines[9]))
 			client.Close()
 			stillconnected = false
 		default:
@@ -316,4 +333,12 @@ func read(connection net.Conn) string {
     }
 
 	return strings.TrimSpace(message)
+}
+
+
+func writeAsciiPic(connection net.Conn){
+	bilden, err := ioutil.ReadFile("ascii.txt")
+	check(err)
+	write(connection, []byte(string(bilden)))
+	
 }
