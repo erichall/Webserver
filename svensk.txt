@@ -1,0 +1,15 @@
+Logga in med ditt kortnummer och lösenord .
+Kortnummer:
+Lösenord:
+Autentisering giltigt. Välkommen till Horizon bank, bank i morgon idag !
+Vad skulle du vilja göra?
+( 1 ) Balans , ( 2 ) Återkallelse , ( 3 ) Deposition , ( 4 ) Exit, ( 5 ) Byt språk
+Autentisering ogiltigt , försök igen .
+Belopp:
+Tack
+för att vara kund hos Horizon bank . Njuta av resten av din dag .
+Jag vet inte vilket språk som är .
+Inte sufficente medel
+Vänligen bekräfta transaktionen med din engångs kodnummer
+Du har använt alla dina onetimes koder , vänligen gå till banken för mer
+jaha detta var ju rolig

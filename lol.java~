@@ -1,0 +1,14 @@
+
+class lol{
+public static void main(String[] args){
+
+    if (true == true) {
+	int x = 10;
+    }
+
+    System.out.println(x);
+    x = 1337;
+    System.out.println(x);
+}
+
+}

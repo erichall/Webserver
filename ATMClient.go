@@ -171,8 +171,10 @@ func handlingRequests(connection net.Conn) {
 	for {
 		
 		intro := read(connection) //What would you like to do?
+		banner := read(connection) // our banner
 		options := read(connection) //(1)Balance, ...
 		fmt.Println(intro)
+		fmt.Println(banner)
 		fmt.Println(options)
 		input := string(userInput())
 		write(connection, []byte(input))

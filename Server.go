@@ -22,10 +22,12 @@ import (
 var (
 	users []User
 	//Global reader that will read what the user writes.
-	 reader *bufio.Reader = bufio.NewReader(os.Stdin)
-    languages = "english\n日本語\ndeutsch"
-    intro = "Please pick a language.\n言語を選択してください。\nBitte wählen Sie eine Sprache aus.\n"
-    end = "Please pick a real language.\n実際の言語を選択してください。\nBitte wählen Sie eine echte Sprache.\n"
+	reader *bufio.Reader = bufio.NewReader(os.Stdin)
+	languages = "english\n日本語\ndeutsch\nsvensk"
+	intro = "Please pick a language.\n言語を選択してください。\nBitte wählen Sie eine Sprache aus.\nvar venlig velj ett sprak.\n"
+	end = "Please pick a real language.\n実際の言語を選択してください。\nBitte wählen Sie eine echte Sprache.\n, snelle velj ett riktigt sprak.\n"
+	// Hold the connections.
+	masterList []Customer
 )
 
 /*User struct definierar all information om en user.*/
@@ -37,6 +39,14 @@ type User struct {
 	enkod []int
 	saldo int
 	mutex sync.Mutex
+}
+
+
+type Customer struct {
+	connection net.Conn
+	user *User
+	language string
+	lines []string
 }
 
 func init() {
@@ -56,20 +66,22 @@ func server(port int) {
 		fmt.Println("Couldn't listen on port " + stringPort)
 		return
 	}
+	fmt.Println("Creating server master.")
+	go srvMaster(listener)
 
 	for {
 		connection, err := listener.Accept() //Accept
-        //Create thread to end connection if established.
-		go forceShutDown(listener,connection) 
+		//Create thread to end connection if established. 
 
 		if (err != nil) {
 			fmt.Println("Failed to establish connection.")
 			break
 		} else {
-		//	go srvMaster(listener, connection)
 			go func(){
-				lines := validateLang(connection)
+				lines, lang := validateLang(connection)
+				fmt.Println(lang)
 				user := loginSetup(connection,lines)
+				masterList = append(masterList, Customer{connection, user, lang, lines})
 				handleClient(connection, lines, user)
 			}()
 			
@@ -89,26 +101,54 @@ func userInput() []byte {
     return msg
 }
 
-func srvMaster(listener net.Listener, connection net.Conn){
+func srvMaster(listener net.Listener){
 	for {
-		cmd := string(userInput())
-		fmt.Println(cmd, "ol")
+		cmd := strings.TrimSpace(string(userInput()))
 		switch cmd {
 		case "shutdown":
-			forceShutDown(listener, connection)
+			for _,cust := range masterList {
+				cust.connection.Close()
+			}
+			listener.Close()
+		case "banner":
+			fmt.Println("Vilket språk tänker du skriva bannern i?")
+			bannerlang := strings.TrimSpace(string(userInput())) + ".txt"
+			fmt.Println("Vad är din banner?", "\t",bannerlang)
+			banner := strings.TrimSpace(string(userInput()))
+			for index := range masterList {
+				fmt.Println(masterList[index].language)
+				if masterList[index].language == bannerlang {
+					fmt.Println("Found a customer!")
+					*(&masterList[index].lines[14]) = banner
+					overrideBanner(masterList[index], bannerlang, banner)
+				}
+			}
 		default:
-			fmt.Println(string(cmd))
-			
+			fmt.Println("Did not understand masters order")
 		}
 		
 	}
 	
 }
-func validateLang(connection net.Conn) []string{
+
+func overrideBanner(customer Customer, filename, newbanner string) {
+	file, err := os.Create(filename)
+	check(err)
+	*(&customer.lines[14]) = newbanner
+	for _, lines := range customer.lines {
+		file.WriteString(lines)
+		file.WriteString("\n")
+		
+	}
+
+	
+}
+
+func validateLang(connection net.Conn) ([]string, string) {
 	write(connection,[]byte(intro + "\n" + languages))
 	var lines []string
 	l := strings.Split(languages, "\n")
-	
+	var custlang string
 	for {
 		fmt.Println("Entering loop")
 		picked := strings.TrimSpace(read(connection))
@@ -119,6 +159,7 @@ func validateLang(connection net.Conn) []string{
 				fmt.Println("Found language!", lang, picked)
 				write(connection, []byte("approved"))
 				lang = lang + ".txt"
+				custlang = lang
 				file, err := os.Open(lang)
 				check(err)
 
@@ -137,7 +178,7 @@ func validateLang(connection net.Conn) []string{
 			write(connection, []byte(end))
 		}
 	}
-	return lines
+	return lines, custlang
 }
 
 func loginSetup(connection net.Conn, lines []string) *User{	
@@ -191,6 +232,7 @@ func handleClient(client net.Conn, lines []string, user *User) {
 	stillconnected := true
 	for stillconnected {
 		write(client, []byte(lines[4]))
+		write(client, []byte(lines[14]))
 		write(client, []byte(lines[5]))
 		input := strings.TrimSpace(read(client))
 		
@@ -247,7 +289,15 @@ func handleClient(client net.Conn, lines []string, user *User) {
 		case "5" : //byt språk
 			tmp := &lines
 			fmt.Println("Entering language config")
-			*tmp = validateLang(client)
+			var lang string
+			*tmp, lang = validateLang(client)
+			for index := range masterList {
+				if masterList[index].connection == client {
+					masterList[index].language = lang
+					masterList[index].lines = *tmp
+					break
+				}
+			}
 		default:
 			write(client, []byte(lines[10]))
 		}
@@ -256,18 +306,7 @@ func handleClient(client net.Conn, lines []string, user *User) {
 
 }
 
-func forceShutDown(listener net.Listener, client net.Conn) {
-    for {
-        var shutdown string
-        fmt.Scanf("%s", &shutdown)
 
-        if (shutdown == "shutdown") {
-            listener.Close()
-            client.Close()
-            break
-        }
-    }
-}
 
 func main() {
     var port int
