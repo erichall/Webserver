@@ -67,8 +67,15 @@ func server(port int) {
 			break
 		} else {
 		//	go srvMaster(listener, connection)
-			go validateLang(connection)
+			go func(){
+				lines := validateLang(connection)
+				user := loginSetup(connection,lines)
+				handleClient(connection, lines, user)
+			}()
+			
+
 		}
+	
 	}
 }
 
@@ -97,12 +104,13 @@ func srvMaster(listener net.Listener, connection net.Conn){
 	}
 	
 }
-func validateLang(connection net.Conn){
+func validateLang(connection net.Conn) []string{
 	write(connection,[]byte(intro + "\n" + languages))
 	var lines []string
 	l := strings.Split(languages, "\n")
 	
 	for {
+		fmt.Println("Entering loop")
 		picked := strings.TrimSpace(read(connection))
 		fmt.Println(picked)
 		for _,lang := range(l) {
@@ -129,8 +137,7 @@ func validateLang(connection net.Conn){
 			write(connection, []byte(end))
 		}
 	}
-	user := loginSetup(connection,lines)
-	handleClient(connection, lines, user)
+	return lines
 }
 
 func loginSetup(connection net.Conn, lines []string) *User{	
@@ -144,6 +151,7 @@ func loginSetup(connection net.Conn, lines []string) *User{
 		} else {
 			for index := range(users) {
 				if(users[index].card_number == cardnumber){
+					write(connection, []byte("approved"))
 					write(connection, []byte(lines[2]))
 					for {
 					    tmpkod := read(connection)
@@ -163,7 +171,6 @@ func loginSetup(connection net.Conn, lines []string) *User{
 			write(connection, []byte(lines[6] + "\n" + lines[1]))
 		}
 	}
-	
 	return new(User)
 	
 }
@@ -181,34 +188,70 @@ func format(rest []byte) []byte {
 }
 
 func handleClient(client net.Conn, lines []string, user *User) {
-	write(client, []byte(lines[4]))
-	write(client, []byte(lines[5]))
-
 	stillconnected := true
 	for stillconnected {
+		write(client, []byte(lines[4]))
+		write(client, []byte(lines[5]))
 		input := strings.TrimSpace(read(client))
 		
-		user.mutex.Lock()
 		switch input {
 		case "1" : //saldo
 			tmpsaldo := strconv.Itoa((*user).saldo)
 			write(client, []byte(tmpsaldo))
 		case "2" : //whitdra
+			randcode := -1
+			for index := range user.enkod {
+				if user.enkod[index] != 1 {
+					randcode = index + 1
+					break
+				}
+			}
+			if randcode == -1 {
+				write(client, []byte(lines[13]))
+				break
+			} else {
+				write(client, []byte("approved"))
+			}
+			stringcode := strconv.Itoa(randcode)
+			
 			write(client, []byte(lines[7]))
 			amount,_ := strconv.Atoi(read(client))
-			user.saldo = (*user).saldo - amount
+			write(client, []byte(lines[12] +" " + stringcode))
+			inputcode,_ := strconv.Atoi(strings.TrimSpace(read(client)))
+			//fmt.Println(inputcode, err, user.enkod[randcode-1])
+			user.mutex.Lock()
+
+			if user.enkod[randcode-1] == inputcode {
+				if user.saldo - amount >= 0 {
+					user.enkod[randcode-1] = 1
+					write(client, []byte("approved"))
+					user.saldo = (*user).saldo - amount
+				}else {
+					write(client, []byte(lines[11]))
+				}
+			} else {
+				write(client, []byte("Wronge onetime code"))
+			}
+			user.mutex.Unlock()
+			fmt.Println("Back to main menu")
 		case "3" : //deposit
 			write(client, []byte(lines[7]))
 			amount,_ := strconv.Atoi(read(client))
+			user.mutex.Lock()
 			user.saldo = (*user).saldo + amount
+			user.mutex.Unlock()
 		case "4" : // Exit
 			write(client, []byte(lines[8] +" " +user.first_name + " " +lines[9]))
 			client.Close()
 			stillconnected = false
+		case "5" : //byt språk
+			tmp := &lines
+			fmt.Println("Entering language config")
+			*tmp = validateLang(client)
 		default:
-			write(client, []byte("hmmm what u say"))
+			write(client, []byte(lines[10]))
 		}
-		user.mutex.Unlock()
+		
     }
 
 }

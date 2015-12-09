@@ -102,93 +102,123 @@ func getAddr() (string, string) {
 }
 
 func languageConfig(connection net.Conn) {
-    intro := read(connection)
-    //check(introerr)
-    fmt.Println(intro)
-    for {
-        picked := string(userInput())
-        picked = strings.ToLower(picked)
-        write(connection, []byte(picked))
-        answer := read(connection)
-        if answer == "approved" {
-            //fmt.Println("Let's break!")
-            break
-        } else {
-            fmt.Println(answer)
-        }
-    } 
-    //fmt.Println("Out of loop!")   
+	intro := read(connection)
+   
+	fmt.Println(intro)
+	for {
+	//	fmt.Println("Enter loop")
+		picked := string(userInput())
+		picked = strings.ToLower(picked)
+	//	fmt.Println("Send the picked language", picked)
+		write(connection, []byte(picked))
+		answer := strings.TrimSpace(read(connection))
+		if answer == "approved" {
+			//fmt.Println("Let's break!")
+			break
+		} else {
+			fmt.Println(answer)
+		}
+	} 
+	//fmt.Println("Out of loop!")   
 }
 
 func userInput() []byte {
-    msg, err := reader.ReadBytes('\n')
+	msg, err := reader.ReadBytes('\n')
 	check(err)
-    if len(msg) == 0 {
-        msg = append(msg, 32)
-    }
-    //fmt.Println(msg)
-    return msg
+	if len(msg) == 0 {
+		msg = append(msg, 32)
+	}
+	//fmt.Println(msg)
+	return msg
 }
 
 func loginSetUp(connection net.Conn) {
-    intro := read(connection)
-    cardText := read(connection)
-    fmt.Println(intro)
-    fmt.Print(cardText)
-    
-    for {
-        card := strings.Replace(string(userInput()), " ", "", -1)
-        write(connection, []byte(card))
-        fmt.Print(read(connection))
-        password := userInput()
-        write(connection, []byte(password))
-    
-        ans := strings.TrimSpace(read(connection))
-        if ans == "approved" {
-            fmt.Println(read(connection))
-            break
-        } else {
-            fmt.Print(ans)
-        }
-    }
+	intro := read(connection)
+	cardText := read(connection)
+	fmt.Println(intro)
+	fmt.Print(cardText)
+	
+	for {
+		card := strings.Replace(string(userInput()), " ", "", -1) //Läser in kortnr
+		write(connection, []byte(card))//Skickar iväg kortnr
+		
+		ans := strings.TrimSpace(read(connection))
+		if ans == "approved" {
+			break
+		} else {
+			fmt.Print(ans)
+		}
+	}
+	
+	fmt.Print(read(connection)) //Skriver ut password:
+	for {
+		password := userInput()
+		write(connection, []byte(password))
+	    
+		ans := strings.TrimSpace(read(connection))
+		if ans == "approved" {
+			fmt.Println(read(connection))
+			break
+		} else {
+			fmt.Print(ans)
+		}
+	}
 }
 
-func action(userInput string) {
-    
-}
 
-func handlingRequests(connection net.Conn) {
-    intro := read(connection) //What would you like to do?
-    options := read(connection) //(1)Balance, ...    
-    for {
-        fmt.Println(intro)
-        fmt.Println(options)
-        input := strings.TrimSpace(string(userInput()))
-        write(connection, []byte(input))
-        switch input {
-            case "1": //saldo
-                fmt.Println(read(connection))
-            case "2": //withdraw
-                fmt.Print(read(connection))
-                amount := strings.TrimSpace(string(userInput()))
-                write(connection, []byte(amount))
-            case "3": //deposit
-                fmt.Print(read(connection))
-                amount := strings.TrimSpace(string(userInput()))
-                write(connection, []byte(amount))
-            case "4": //exit
-                fmt.Println(read(connection))
-                os.Exit(0)
-            default:
-                fmt.Println(read(connection))           
-        }
-    }
+
+func handlingRequests(connection net.Conn) {    
+	for {
+		
+		intro := read(connection) //What would you like to do?
+		options := read(connection) //(1)Balance, ...
+		fmt.Println(intro)
+		fmt.Println(options)
+		input := string(userInput())
+		write(connection, []byte(input))
+		input = strings.TrimSpace(input)
+		switch input {
+		case "1": //saldo
+			fmt.Println(read(connection))
+		case "2": //withdraw
+			
+			ans := strings.TrimSpace(read(connection)) 
+			if ans != "approved" {
+				fmt.Println(ans)
+				break
+			}		
+			fmt.Print(read(connection))
+			
+			amount := strings.TrimSpace(string(userInput()))
+			write(connection, []byte(amount))
+			
+			fmt.Println(read(connection))
+			write(connection, []byte(userInput()))
+			
+			app := strings.TrimSpace(read(connection))
+			if app != "approved" {
+				//fmt.Println("I am not approved")
+				fmt.Println(app)
+			}
+		case "3": //deposit
+			fmt.Print(read(connection))
+			amount := strings.TrimSpace(string(userInput()))
+			write(connection, []byte(amount))
+		case "4": //exit
+			fmt.Println(read(connection))
+			os.Exit(0)
+		case "5": //change lang
+			languageConfig(connection)	
+		default:
+			fmt.Println(read(connection))           
+		}
+	}
 }
 
 //client starts the client.
 func client(){
     // Connect to the server through tcp/IP.
-	connection, err := net.Dial("tcp", ("192.168.0.16" + ":" + "5555"))
+	connection, err := net.Dial("tcp", ("127.0.0.1" + ":" + "5678"))
     // If connection failed crash.
 	check(err)
     //Configure the language.

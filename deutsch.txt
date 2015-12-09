@@ -3,8 +3,12 @@ Kartennummer:
 Passwort:
 Authentifizierung gültig. Willkommen bei Horizon Bank, die Bank von morgen schon heute !
 Was würdest du gern tun?
-(1) Gleichgewicht, (2) Widerrufsrecht , (3) Hotelsafe (4) Beenden
+(1) Gleichgewicht, (2) Widerrufsrecht , (3) Hotelsafe (4) Exit (5) Sprache ändern
 Authentifizierung ungültig Bitte versuchen Sie es erneut.
 Menge:
-Danke, dass Sie ein Kunde im Horizon Bank. Genieß 'den Rest deines Tages.
-Bitte geben Sie die einmalige Codenummer 
+Vielen Dank
+dafür, dass ein Kunde im Horizon Bank. Genieß 'den Rest deines Tages.
+Ich weiß nicht, welche Sprache das ist.
+Nicht sufficente Fonds
+Bitte überprüfen Transaktion mit Ihrer einmaligen Codenummer
+Sie haben alle Ihre onetimes Codes verwendet wird, auf die Bank gehen bitte für weitere
