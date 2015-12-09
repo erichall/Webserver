@@ -23,9 +23,9 @@ var (
 	users []User
 	//Global reader that will read what the user writes.
 	reader *bufio.Reader = bufio.NewReader(os.Stdin)
-	languages = "english\n日本語\ndeutsch\nsvensk"
-	intro = "Please pick a language.\n言語を選択してください。\nBitte wählen Sie eine Sprache aus.\nvar venlig velj ett sprak.\n"
-	end = "Please pick a real language.\n実際の言語を選択してください。\nBitte wählen Sie eine echte Sprache.\n, snelle velj ett riktigt sprak.\n"
+	languages = "english\n日本語\ndeutsch\nsvenska"
+	intro = "Please pick a language.\n言語を選択してください。\nBitte wählen Sie eine Sprache aus.\nVar venlig velj ett sprak.\n"
+	end = "Please pick a real language.\n実際の言語を選択してください。\nBitte wählen Sie eine echte Sprache.\nSnelle velj ett riktigt sprak.\n"
 	// Hold the connections.
 	masterList []Customer
 )
@@ -111,37 +111,46 @@ func srvMaster(listener net.Listener){
 			}
 			listener.Close()
 		case "banner":
-			fmt.Println("Vilket språk tänker du skriva bannern i?")
+			fmt.Println("In what language are you going to write your banner?")
 			bannerlang := strings.TrimSpace(string(userInput())) + ".txt"
-			fmt.Println("Vad är din banner?", "\t",bannerlang)
+			fmt.Println("What is your banner?")
 			banner := strings.TrimSpace(string(userInput()))
+
 			for index := range masterList {
-				fmt.Println(masterList[index].language)
 				if masterList[index].language == bannerlang {
-					fmt.Println("Found a customer!")
 					*(&masterList[index].lines[14]) = banner
-					overrideBanner(masterList[index], bannerlang, banner)
 				}
 			}
+			overrideFile(bannerlang, banner, 14)
+			fmt.Println("Banner successfully changed.")
+		case "welcome message":
+			fmt.Println("In what language are you going to write your welcome message?")
+			welcomelang := strings.TrimSpace(string(userInput())) + ".txt"
+			fmt.Println("What is your welcome message?")
+			welcome := strings.TrimSpace(string(userInput()))
+			overrideFile(welcomelang, welcome, 3)
+			fmt.Println("Welcome message successfully changed.")
 		default:
-			fmt.Println("Did not understand masters order")
-		}
-		
-	}
-	
+			fmt.Println("Did not understand command, please try again.")
+		}	
+	}	
 }
 
-func overrideBanner(customer Customer, filename, newbanner string) {
-	file, err := os.Create(filename)
-	check(err)
-	*(&customer.lines[14]) = newbanner
-	for _, lines := range customer.lines {
-		file.WriteString(lines)
-		file.WriteString("\n")
-		
+func overrideFile(filename, replacement string, row int) {
+	content, err := ioutil.ReadFile(filename)
+	if err != nil {
+		fmt.Println(err)
 	}
+	rows := strings.Split(string(content), "\n")
+	rows[row] = replacement
 
-	
+	file, fileErr := os.Create(filename)
+	if fileErr != nil {
+		fmt.Println(fileErr)
+	}
+	newContent := strings.Join(rows, "\n")
+	file.WriteString(newContent)
+	file.Close()
 }
 
 func validateLang(connection net.Conn) ([]string, string) {
