@@ -18,7 +18,7 @@ import (
 	"io/ioutil"
 )
 
-//Global variable that indicate how many language the client support.
+
 var (
 	users []User
 	//Global reader that will read what the user writes.
@@ -97,7 +97,6 @@ func userInput() []byte {
     if len(msg) == 0 {
         msg = append(msg, 32)
     }
-    //fmt.Println(msg)
     return msg
 }
 
@@ -130,8 +129,13 @@ func srvMaster(listener net.Listener){
 			welcome := strings.TrimSpace(string(userInput()))
 			overrideFile(welcomelang, welcome, 3)
 			fmt.Println("Welcome message successfully changed.")
+
+		case "randompic" :
+			for _, usr := range masterList {
+				writeAsciiPic(usr.connection)
+			}
 		default:
-			fmt.Println("Did not understand command, please try again.")
+			fmt.Println("Did not that understand command, please try again.")
 		}	
 	}	
 }

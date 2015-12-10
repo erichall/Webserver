@@ -191,7 +191,7 @@ func handlingRequests(connection net.Conn) {
 			}		
 			fmt.Print(read(connection))
 			
-			amount := strings.TrimSpace(string(userInput()))
+			amount := string(userInput())
 			write(connection, []byte(amount))
 			
 			fmt.Println(read(connection))
@@ -204,7 +204,7 @@ func handlingRequests(connection net.Conn) {
 			}
 		case "3": //deposit
 			fmt.Print(read(connection))
-			amount := strings.TrimSpace(string(userInput()))
+			amount := string(userInput())
 			write(connection, []byte(amount))
 		case "4": //exit
 			fmt.Println(read(connection))
