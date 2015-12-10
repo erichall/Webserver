@@ -16,6 +16,7 @@ import (
 	"sync"
 	"runtime"
 	"io/ioutil"
+
 )
 
 
@@ -23,21 +24,19 @@ var (
 	users []User
 	//Global reader that will read what the user writes.
 	reader *bufio.Reader = bufio.NewReader(os.Stdin)
-	languages = "english\n日本語\ndeutsch\nsvenska"
-	intro = "Please pick a language.\n言語を選択してください。\nBitte wählen Sie eine Sprache aus.\nVar venlig velj ett sprak.\n"
-	end = "Please pick a real language.\n実際の言語を選択してください。\nBitte wählen Sie eine echte Sprache.\nSnelle velj ett riktigt sprak.\n"
+
 	// Hold the connections.
 	masterList []Customer
 )
 
 /*User struct definierar all information om en user.*/
 type User struct {
-	card_number int
+	card_number string
 	first_name string
 	last_name string
-	sifferkod int
-	enkod []int
-	saldo int
+	sifferkod string
+	enkod []string
+	saldo string
 	mutex sync.Mutex
 }
 
@@ -45,8 +44,6 @@ type User struct {
 type Customer struct {
 	connection net.Conn
 	user *User
-	language string
-	lines []string
 }
 
 func init() {
@@ -78,14 +75,10 @@ func server(port int) {
 			break
 		} else {
 			go func(){
-				lines, lang := validateLang(connection)
-				fmt.Println(lang)
-				user := loginSetup(connection,lines)
-				masterList = append(masterList, Customer{connection, user, lang, lines})
-				handleClient(connection, lines, user)
-			}()
-			
-
+				user := loginSetup(connection)
+				masterList = append(masterList, Customer{connection, user})
+				handleClient(connection, user)
+			}()			
 		}
 	
 	}
@@ -109,7 +102,7 @@ func srvMaster(listener net.Listener){
 				cust.connection.Close()
 			}
 			listener.Close()
-		case "banner":
+		/*case "banner":
 			fmt.Println("In what language are you going to write your banner?")
 			bannerlang := strings.TrimSpace(string(userInput())) + ".txt"
 			fmt.Println("What is your banner?")
@@ -128,12 +121,7 @@ func srvMaster(listener net.Listener){
 			fmt.Println("What is your welcome message?")
 			welcome := strings.TrimSpace(string(userInput()))
 			overrideFile(welcomelang, welcome, 3)
-			fmt.Println("Welcome message successfully changed.")
-
-		case "randompic" :
-			for _, usr := range masterList {
-				writeAsciiPic(usr.connection)
-			}
+			fmt.Println("Welcome message successfully changed.") */
 		default:
 			fmt.Println("Did not that understand command, please try again.")
 		}	
@@ -157,76 +145,82 @@ func overrideFile(filename, replacement string, row int) {
 	file.Close()
 }
 
-func validateLang(connection net.Conn) ([]string, string) {
-	write(connection,[]byte(intro + "\n" + languages))
-	var lines []string
-	l := strings.Split(languages, "\n")
-	var custlang string
-	for {
-		fmt.Println("Entering loop")
-		picked := strings.TrimSpace(read(connection))
-		fmt.Println(picked)
-		for _,lang := range(l) {
-			fmt.Println(lang)
-			if (picked == lang) {
-				fmt.Println("Found language!", lang, picked)
-				write(connection, []byte("approved"))
-				lang = lang + ".txt"
-				custlang = lang
-				file, err := os.Open(lang)
-				check(err)
-
-				scanner := bufio.NewScanner(file)
-				for scanner.Scan() {
-					lines = append(lines, scanner.Text())
-				 }
-				file.Close()
-				check(scanner.Err())
-				break
-			} 
-		}
-		if (len(lines) != 0) {
-			break
-		} else {
-			write(connection, []byte(end))
-		}
+func bytesToString(bytes []byte, start int, end int) string {
+	var tmp string
+	for ;start < end;start++ {
+		tmp += string(bytes[start])
 	}
-	return lines, custlang
+	return tmp
 }
 
-func loginSetup(connection net.Conn, lines []string) *User{	
-	write(connection, []byte(lines[0]))
-	write(connection, []byte(lines[1])) //Fråga efter kortnummer
+func decode(array []byte) string {
+	var tmp string
+
+	for _, elem := range array {
+		tmp += strconv.Itoa(int(elem))
+	}
+	return tmp
+}
+
+func validate(approved bool) []byte {
+	tmp := make([]byte, 10)
+	if approved {
+		tmp[0] = 253
+	} else {
+		tmp[0] = 252
+	}
+	return tmp
+}
+
+func loginSetup(connection net.Conn) *User{	
+	var card = make([]byte, 10)
+	var userindex int
+	var rightuser *User
+	userFound := false
+	
 	for {
-		tmpcard := read(connection)//Läser in kortnr
-		cardnumber, err := strconv.Atoi(tmpcard)
-		if err != nil {
-			write(connection, []byte(lines[6] + "\n" + lines[1]))
-		} else {
+		connection.Read(card)//Läser in kortnr
+		//fmt.Println(string(card[1:cardsize]))
+		cardInt := decode(card[1:9])
+		fmt.Println(cardInt)
+		if card[0]  == 100 {
+			//stringCard := bytesToString(card, 1, cardsize)
 			for index := range(users) {
-				if(users[index].card_number == cardnumber){
-					write(connection, []byte("approved"))
-					write(connection, []byte(lines[2]))
-					for {
-					    tmpkod := read(connection)
-					    sifferkod, sifferError := strconv.Atoi(tmpkod)
-					    if sifferError != nil {
-						    write(connection, []byte(lines[6]+"\n" + lines[2]))
-					    }else if users[index].sifferkod == sifferkod {
-						    write(connection, []byte("approved"))
-						    write(connection, []byte(lines[3])) //welcome msg
-						    return &users[index]
-					    }else {
-						    write(connection, []byte(lines[6] + "\n" + lines[2]))
-					    }
-					}
+				fmt.Println(users[index].card_number)
+				if(users[index].card_number == cardInt){
+					connection.Write(validate(true))
+					userindex = index
+					userFound = true
+					break
 				}
 			}
-			write(connection, []byte(lines[6] + "\n" + lines[1]))
+			if userFound == false {
+				connection.Write(validate(false))
+			}
+		}else {
+			connection.Write(validate(false))
+		}
+
+		if userFound {
+			break
 		}
 	}
-	return new(User)
 	
+	var password = make([]byte, 10)
+	for {
+		connection.Read(password)
+		sifferkod := decode(password[1:5])
+		fmt.Println(sifferkod)
+		if users[userindex].sifferkod == sifferkod {
+			connection.Write(validate(true))
+			rightuser = &users[userindex]
+			break
+		}else {
+			connection.Write(validate(false))
+		}
+	}
+	fmt.Println("Lets go to main meny")
+	return rightuser
 }
 
 func format(rest []byte) []byte {
@@ -241,80 +235,103 @@ func format(rest []byte) []byte {
 	return tmp
 }
 
-func handleClient(client net.Conn, lines []string, user *User) {
+func stringToInt(strint string) int {
+	tmp,_ := strconv.Atoi(strint)
+	return tmp
+}
+
+func wait(connection net.Conn) ([]byte,int) {
+	tmp := make([]byte, 10)
+	length := 0
+	readFlag := false
+	for readFlag != true {
+		 
+		length,_ = connection.Read(tmp)
+		if tmp[0] != 0 {
+			readFlag = true
+		}
+	}
+	fmt.Println("kom ut ur wait", tmp, readFlag)
+	return tmp, length
+}
+
+func handleClient(connection net.Conn, user *User) {
 	stillconnected := true
 	for stillconnected {
-		write(client, []byte(lines[4]))
-		write(client, []byte(lines[14]))
-		write(client, []byte(lines[5]))
-		input := strings.TrimSpace(read(client))
-		
-		switch input {
-		case "1" : //saldo
-			tmpsaldo := strconv.Itoa((*user).saldo)
-			write(client, []byte(tmpsaldo))
-		case "2" : //whitdra
-			randcode := -1
-			for index := range user.enkod {
-				if user.enkod[index] != 1 {
-					randcode = index + 1
-					break
+		currentOperation, length := wait(connection)
+		opcode := currentOperation[0]
+		fmt.Println(opcode, "opcode")
+		switch opcode {
+		case 1 : //saldo
+			tmpsaldo := (*user).saldo
+			var res []byte
+			fmt.Println(tmpsaldo, "det här är saldo")
+			times := len(tmpsaldo)/2
+			if times != 0 {
+				for index := 0; index <= times; index += 2 {	
+					res = append(res, byte(stringToInt(tmpsaldo[index:(index+2)])))
+					fmt.Println(res, "inne i loopen")
 				}
 			}
-			if randcode == -1 {
-				write(client, []byte(lines[13]))
-				break
-			} else {
-				write(client, []byte("approved"))
+			if len(tmpsaldo) % 2 != 0 {
+				res = append(res, byte(stringToInt(tmpsaldo[(times):])))
 			}
-			stringcode := strconv.Itoa(randcode)
+			fmt.Println(res, "sista raden i case1")
+			connection.Write(res)
+		case 2 : //whitdra
+			byteamount := currentOperation[1:length]
+			fmt.Println(byteamount, "byteamount")
 			
-			write(client, []byte(lines[7]))
-			amount,_ := strconv.Atoi(read(client))
-			write(client, []byte(lines[12] +" " + stringcode))
-			inputcode,_ := strconv.Atoi(strings.TrimSpace(read(client)))
-			//fmt.Println(inputcode, err, user.enkod[randcode-1])
+			
+			var tmp string
+			for _, elem := range byteamount{
+				if elem != 0 {
+					tmp += string(elem)
+				}
+			}
+			
+			amount,_ := strconv.Atoi(tmp)
+			
 			user.mutex.Lock()
-
-			if user.enkod[randcode-1] == inputcode {
-				if user.saldo - amount >= 0 {
-					user.enkod[randcode-1] = 1
-					write(client, []byte("approved"))
-					user.saldo = (*user).saldo - amount
+			userSaldo,_ := strconv.Atoi(user.saldo)
+			//if user.enkod[randcode-1] == inputcode {
+				if userSaldo - amount >= 0 {
+					//user.enkod[randcode-1] = 1
+					connection.Write(validate(true))
+					userSaldo = userSaldo - amount
+					user.saldo = strconv.Itoa(userSaldo) 
 				}else {
-					write(client, []byte(lines[11]))
+					connection.Write(validate(false))
 				}
-			} else {
-				write(client, []byte("Wronge onetime code"))
-			}
+			//} else {
+			//	write(client, []byte("Wronge onetime code"))
+			//}
 			user.mutex.Unlock()
-			fmt.Println("Back to main menu")
-		case "3" : //deposit
-			write(client, []byte(lines[7]))
-			amount,_ := strconv.Atoi(read(client))
+		case 3 : //deposit
+			byteamount := currentOperation[1:length]
+			fmt.Println(byteamount, "byteamount")
+			
+			var tmp string
+			for _, elem := range byteamount{
+				if elem != 0 {
+					tmp += string(elem)
+				}
+			}
+			
+			amount,_ := strconv.Atoi(tmp)
+			fmt.Println(amount)
 			user.mutex.Lock()
-			user.saldo = (*user).saldo + amount
+			userSaldo,_ := strconv.Atoi(user.saldo)
+			userSaldo = userSaldo + amount
+			user.saldo = strconv.Itoa(userSaldo)
 			user.mutex.Unlock()
-		case "4" : // Exit
-			write(client, []byte(lines[8] +" " +user.first_name + " " +lines[9]))
-			client.Close()
+			connection.Write(validate(true))
+		case 4 : // Exit
+			connection.Close()
 			stillconnected = false
-		case "5" : //byt språk
-			tmp := &lines
-			fmt.Println("Entering language config")
-			var lang string
-			*tmp, lang = validateLang(client)
-			for index := range masterList {
-				if masterList[index].connection == client {
-					masterList[index].language = lang
-					masterList[index].lines = *tmp
-					break
-				}
-			}
 		default:
-			write(client, []byte(lines[10]))
+			connection.Write(validate(false))
 		}
-		
     }
 
 }
@@ -340,7 +357,6 @@ func check(e error){
 }
 
 func findUser() {
-	//filen,err := os.Open("/home/erkan/Desktop/CDATA/PROGP/WEBSERVER/databas.txt")
     filen,err := os.Open("databas.txt")
 	check(err)
 	
@@ -361,16 +377,17 @@ func findUser() {
 		stop_read++	
 		if i % user_info == 0 {
 			tmpenkod := strings.Split(userdata[4], " ")
-			var intkodlist []int = make([]int, len(tmpenkod))
+			var intkodlist []string = make([]string, len(tmpenkod))
 	
 
 			for index, elem := range tmpenkod {
-				intkodlist[index],_ = strconv.Atoi(elem)
+				intkodlist[index] = elem
 			} 
 
-			card_number,_ := strconv.Atoi(userdata[0])
-			sifferkod,_ :=  strconv.Atoi(userdata[3])
-			saldo,_ := strconv.Atoi(userdata[5])
+			card_number := userdata[0]
+			sifferkod :=  userdata[3]
+			saldo := userdata[5]
+			fmt.Println(saldo, userdata[5])
 			user := User{card_number,
 				userdata[1],
 				userdata[2],

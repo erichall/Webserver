@@ -121,7 +121,7 @@ func validateLang() {
 		for _,lang := range(l) {
 			fmt.Println(lang)
 			if (picked == lang) {
-				fmt.Println("Found language!", lang, picked)
+				//fmt.Println("Found language!", lang, picked)
 				custlang = lang
 				lang = lang + ".txt"
 			
