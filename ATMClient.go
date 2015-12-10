@@ -33,82 +33,7 @@ func check(err error) {
     }
 }
 
-func format(rest []byte) []byte { 
-    tmp := make([]byte, 10) 
-    for index := range tmp { 
-        if (index < len(rest)) { 
-            tmp[index] = rest[index] 
-        } else { 
-            tmp[index] = 32 
-        } 
-    } 
-    return tmp 
-}
 
-//read Reads from the server.
-func write(connection net.Conn, msg []byte) {
-    size := len(msg)
-    sendSize := size/10
-    if size % 10 != 0 {
-        sendSize++
-    }
-
-    number := make([]byte, 1)
-    number[0] = byte(sendSize)
-    connection.Write(number)
-
-    for times := 1; times != sendSize; times++ {
-	    prev := 10*(times-1)
-	    _, timesError := connection.Write(msg[prev:(10*times)])
-	    check(timesError)
-    }
-     _, restError := connection.Write(format(msg[10*(sendSize-1):]))
-    check(restError)
-}
-
-func read(connection net.Conn) string {
-    times := make([]byte, 1)
-    for {
-        read, err := connection.Read(times)
-        check(err)
-        if read == 1 {
-            break
-        }
-    }
-    bytes := int(times[0])
-    holder := make([]byte, 10)
-    message := ""
-    
-    for bytes != 0 {
-        letters, Rederr := connection.Read(holder)
-        check(Rederr)
-        message += string(holder[0:letters])
-        bytes--
-    }
-
-    return strings.TrimSpace(message)
-}
-
-//getAddr gets the address.
-func getAddr() (string, string) {
-	var ip string
-	var port string
-	fmt.Print("Enter IP to connect to: ")
-	_, err := fmt.Scanln(&ip)
-	if err != nil {
-		fmt.Println(err)
-		return "", ""
-	}
-
-	fmt.Println("Enter Port: ")
-	_, erro := fmt.Scanln(&port) 
-	if erro != nil {
-		fmt.Println(erro)
-		return "", ""
-	}
-	
-	return ip, port
-}
 
 func validateLang() {
 	fmt.Println(intro + "\n" + languages)
@@ -121,7 +46,7 @@ func validateLang() {
 		for _,lang := range(l) {
 			fmt.Println(lang)
 			if (picked == lang) {
-				fmt.Println("Found language!", lang, picked)
+				//fmt.Println("Found language!", lang, picked)
 				custlang = lang
 				lang = lang + ".txt"
 			
@@ -245,6 +170,21 @@ func decode(array []byte) string {
 	return tmp
 }
 
+func wait(connection net.Conn) ([]byte,int) {
+	tmp := make([]byte, 10)
+	length := 0
+	readFlag := false
+	for readFlag != true {
+		 
+		length,_ = connection.Read(tmp)
+		if tmp[0] != 0 {
+			readFlag = true
+		}
+	}
+	fmt.Println("kom ut ur wait", tmp, readFlag)
+	return tmp, length
+}
+
 
 func handlingRequests(connection net.Conn) {    
 	for {
@@ -279,14 +219,35 @@ func handlingRequests(connection net.Conn) {
 				}
 			}
 			connection.Write(makeMsg(2, amount))
-			//fmt.Println("here i got")
+
+			fmt.Println("here i got")
+
+			enKod, length := wait(connection)
+			if enKod[0] == 252 {
+				fmt.Println(lines[12])
+				break
+			}
+			fmt.Println(lines[12] + " " + string(enKod[0:length])) //Read what onetime code srv wants
+			fmt.Println("Nu ska jag har skrivit ut enKod", enKod)
+
+			inputCode := strings.TrimSpace(userInput()) //Read user input
+
+			connection.Write([]byte(inputCode)) //Send inputCode to srv
+			
+			
 			ans := make([]byte, 10)
 			connection.Read(ans)
-			if ans[0] == 253 {
+			if ans[0] == 252 { //if srv return inc enkod break and print error
+				fmt.Println(lines[11])
 				break
-			} else {
-				fmt.Print(lines[11])
 			}
+
+			ans = make([]byte, 10)
+			connection.Read(ans)
+			if ans[0] == 252 { //check if transaction was complemeted
+				fmt.Println(lines[11]) 
+			} 
+			
 		case "3": //deposit
 			var amount string
 			for {

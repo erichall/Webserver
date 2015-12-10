@@ -102,26 +102,12 @@ func srvMaster(listener net.Listener){
 				cust.connection.Close()
 			}
 			listener.Close()
-		/*case "banner":
-			fmt.Println("In what language are you going to write your banner?")
-			bannerlang := strings.TrimSpace(string(userInput())) + ".txt"
+		case "banner" :
+			fmt.Println("What lang do you wish to change banner for?")
+			langPick := strings.TrimSpace(userInput()) //What langue master picked
 			fmt.Println("What is your banner?")
-			banner := strings.TrimSpace(string(userInput()))
-
-			for index := range masterList {
-				if masterList[index].language == bannerlang {
-					*(&masterList[index].lines[14]) = banner
-				}
-			}
-			overrideFile(bannerlang, banner, 14)
-			fmt.Println("Banner successfully changed.")
-		case "welcome message":
-			fmt.Println("In what language are you going to write your welcome message?")
-			welcomelang := strings.TrimSpace(string(userInput())) + ".txt"
-			fmt.Println("What is your welcome message?")
-			welcome := strings.TrimSpace(string(userInput()))
-			overrideFile(welcomelang, welcome, 3)
-			fmt.Println("Welcome message successfully changed.") */
+			banner := strings.TrimSpace(userInput())
+			
 		default:
 			fmt.Println("Did not that understand command, please try again.")
 		}	
@@ -280,7 +266,7 @@ func handleClient(connection net.Conn, user *User) {
 			connection.Write(res)
 		case 2 : //whitdra
 			byteamount := currentOperation[1:length]
-			fmt.Println(byteamount, "byteamount")
+			fmt.Println(byteamount, "byteamount in 2")
 			
 			
 			var tmp string
@@ -291,9 +277,43 @@ func handleClient(connection net.Conn, user *User) {
 			}
 			
 			amount,_ := strconv.Atoi(tmp)
+
+			var tmpCode string
+			for index := range user.enkod {
+				if user.enkod[index] != "-1" {
+					tmpCode = strconv.Itoa(index + 1)
+					break
+				}
+			}
+			fmt.Println(tmpCode, "tmpCode")
+			if tmpCode == "" {
+				connection.Write(validate(false))
+				break
+			}else {
+				connection.Write([]byte(tmpCode))
+			}
+
+			oneCodeInput := make([]byte, 2)
+			connection.Read(oneCodeInput) //Read the given inputCode
+
+			codeFound := false
+			
+			for i := range user.enkod {
+				if user.enkod[i] == string(oneCodeInput) {
+					user.enkod[i] = "-1" //remove the code
+					codeFound = true
+					connection.Write(validate(true))
+				} 
+			}
+			//check if we found the code, else break and send false
+			if codeFound == false {
+				connection.Write(validate(false))
+				break
+			}
 			
 			user.mutex.Lock()
 			userSaldo,_ := strconv.Atoi(user.saldo)
+			
 			//if user.enkod[randcode-1] == inputcode {
 				if userSaldo - amount >= 0 {
 					//user.enkod[randcode-1] = 1
