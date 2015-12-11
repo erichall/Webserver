@@ -376,7 +376,7 @@ func handlingRequests(connection net.Conn) {
 				amount = strings.TrimSpace(userInput())
 				_, err := strconv.Atoi(amount)
 				//fmt.Println(err, "error i 2")
-				if len(amount) <= 27 && len(amount) > 0 && err == nil {
+				if len(amount) <= 9 && len(amount) > 0 && err == nil {
 					break
 				} else {
 					//fmt.Println(len(amount))

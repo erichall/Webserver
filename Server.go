@@ -340,7 +340,7 @@ func handleClient(connection net.Conn, user *User) {
 			byteamount := removeZero(currentOperation[1:length])
 			fmt.Println(byteamount, "byteamount in 2")
 			
-			amount,amounterr := strconv.ParseInt(string(byteamount),10,64)
+			amount,amounterr := strconv.Atoi(string(byteamount))
 			fmt.Println(amounterr, amount)
 			tmpCode := ""
 			for index := range user.enkod {
@@ -386,16 +386,17 @@ func handleClient(connection net.Conn, user *User) {
 			}
 			
 			user.mutex.Lock()
-			userSaldo,saldoerr := strconv.ParseInt(user.saldo, 10, 64)
-			fmt.Println(saldoerr)
-			
-			saldoint,_ := strconv.ParseInt(string(userSaldo), 10, 64)
-			amountint,_ := strconv.ParseInt(string(amount), 10, 64)
-			if (saldoint - amountint) >= 0 {
+			//userSaldo,saldoerr := strconv.ParseInt(user.saldo, 10, 64)
+			//fmt.Println(saldoerr)
+			userSaldo,_ := strconv.Atoi(user.saldo)
+			//saldoint,_ := strconv.ParseInt(string(userSaldo), 10, 64)
+			//amountint,_ := strconv.ParseInt(string(amount), 10, 64)
+			var checkSub int64
+			checkSub =int64(userSaldo) - int64(amount)
+			if checkSub >= 0 {
 				connection.Write(validate(true))
-				newUserSal := saldoint - amountint
-				fmt.Println(newUserSal, "<- userSal")
-				user.saldo = strconv.FormatInt(newUserSal, 10) 
+				fmt.Println(checkSub, "<- userSal")
+				user.saldo = strconv.FormatInt(checkSub, 10) 
 			}else {
 				fmt.Println("jag skriver ut error i userSlado-amount")
 				connection.Write(validate(false))
@@ -415,9 +416,10 @@ func handleClient(connection net.Conn, user *User) {
 			amount,_ := strconv.Atoi(tmp)
 			fmt.Println(amount)
 			user.mutex.Lock()
+			var tmpSal int64
 			userSaldo,_ := strconv.Atoi(user.saldo)
-			userSaldo = userSaldo + amount
-			user.saldo = strconv.Itoa(userSaldo)
+			tmpSal = int64(userSaldo) + int64(amount)
+			user.saldo = strconv.FormatInt(tmpSal,10)
 			user.mutex.Unlock()
 			connection.Write(validate(true))
 		case 4 : // Exit
