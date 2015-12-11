@@ -8,8 +8,6 @@ import (
 	"net"
 	"strings"
 	"strconv"
-	//"bytes"
-	//"io"
 )
 
 //Global reader that will read what the user writes.
@@ -93,6 +91,15 @@ func stringToInt(strint string) int {
 	return tmp
 }
 
+func fillup(array []byte, endIndex, startIndex int) []byte {
+
+	for tmp := startIndex; tmp < endIndex; tmp++ {
+		array[tmp] = byte(0)
+	}
+
+	return array
+}
+
 func makeMsg(opt int, msg string) []byte {
 	msg = strings.TrimSpace(msg)
 	var res = make([]byte, 10)
@@ -106,6 +113,8 @@ func makeMsg(opt int, msg string) []byte {
 		for index := range msg {
 			res[index+1] = byte(msg[index])
 		}
+
+		res = fillup(res, len(msg)+1, 10)
 	case 3 :
 		if len(msg) > 9 {
 			break
@@ -113,6 +122,9 @@ func makeMsg(opt int, msg string) []byte {
 		for index := range msg {
 			res[index+1] = byte(msg[index])
 		}
+
+		res = fillup(res, len(msg) +1, 10)
+		
 	case 100 : //cardnumber
 		if len(msg) != 16 {
 			break
@@ -125,6 +137,7 @@ func makeMsg(opt int, msg string) []byte {
 		res[6] =  byte(stringToInt(msg[10:12]))
 		res[7] =  byte(stringToInt(msg[12:14]))
 		res[8] =  byte(stringToInt(msg[14:16]))
+		res = fillup(res, 9,10)
 	case 101 : //password
 		if len(msg) != 4 {
 			break	
@@ -133,6 +146,14 @@ func makeMsg(opt int, msg string) []byte {
 		res[2] = byte(stringToInt(msg[1:2]))
 		res[3] = byte(stringToInt(msg[2:3]))
 		res[4] = byte(stringToInt(msg[3:4]))
+		res = fillup(res, 5, 10)
+	case 103 : //enkod
+		if len(msg) != 2 {
+			break
+		}
+		res[1] = byte(msg[0])
+		res[2] = byte(msg[1])
+		res= fillup(res, 3, 10)
 	}
 	//fmt.Println(res)
 	return res
@@ -227,12 +248,12 @@ func updateFile(connection net.Conn) {
 	exist := false
 	
 	for _,currentlang := range languages {
-		if currentlang == string(lang) {
+		if currentlang == strings.TrimSpace(string(lang)) {
 			exist = true
 		}
 	}
 	if exist == false {
-		languages = append(languages, string(lang))
+		languages = append(languages, strings.TrimSpace(string(lang)))
 	}
 
 	filename := strings.TrimSpace(string(lang)) + ".txt"
@@ -319,9 +340,12 @@ func handlingRequests(connection net.Conn) {
 
 			fmt.Println("here i got")
 
-			enKod, length := wait(connection)
-			if enKod[0] == 252 {
-				fmt.Println(lines[12])
+			enKod := make([]byte, 10)
+
+			length, _ := connection.Read(enKod)
+			
+			if enKod[0] == 252 { //if srv return inc enkod break and print error
+				fmt.Println(lines[11])
 				break
 			}
 			fmt.Println(lines[12] + " " + string(enKod[0:length])) //Read what onetime code srv wants
@@ -329,7 +353,7 @@ func handlingRequests(connection net.Conn) {
 
 			inputCode := strings.TrimSpace(userInput()) //Read user input
 
-			connection.Write([]byte(inputCode)) //Send inputCode to srv
+			connection.Write(makeMsg(103, inputCode)) //Send inputCode to srv
 			
 			
 			ans := make([]byte, 10)
@@ -383,8 +407,8 @@ func handlingRequests(connection net.Conn) {
 //client starts the client.
 func client(){
     // Connect to the server through tcp/IP.
-	connection, err := net.Dial("tcp", ("127.0.0.1" + ":" + "8082"))
-	updateListener , listErr := net.Dial("tcp", ("127.0.0.1" + ":" + "8083"))
+	connection, err := net.Dial("tcp", ("127.0.0.1" + ":" + "8084"))
+	updateListener , listErr := net.Dial("tcp", ("127.0.0.1" + ":" + "8085"))
     // If connection failed crash.
 	check(err)
 	check(listErr)

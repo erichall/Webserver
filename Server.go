@@ -114,15 +114,40 @@ func userInput() []byte {
     return msg
 }
 
+func updateDatabase() {
+	var newDatabase string
+	for _,user := range users {
+		newDatabase += user.card_number + "\n"
+		newDatabase += user.first_name + "\n"
+		newDatabase += user.last_name + "\n"
+		newDatabase += user.sifferkod + "\n"
+		for _,codes := range user.enkod {
+			newDatabase += codes + " "
+		}
+		newDatabase += "\n"
+		newDatabase += user.saldo + "\n"
+	}
+	file, err := os.Create("databas.txt")
+	if err != nil {
+		fmt.Println("Master....I could not save the database.")
+	}
+	file.WriteString(newDatabase)
+	file.Close()
+}
+		
+
 func srvMaster(listener net.Listener){
-	for {
+	shutdown := false
+	for shutdown == false {
 		cmd := strings.TrimSpace(string(userInput()))
 		switch cmd {
 		case "shutdown":
+			shutdown = true
 			for _,cust := range masterList {
 				cust.connection.Close()
 			}
 			listener.Close()
+			updateDatabase()
 		case "update" :
 			fmt.Println("What lang do you wish to update?")
 			lang := strings.TrimSpace(string(userInput())) //What langue master picked
@@ -181,7 +206,17 @@ func validate(approved bool) []byte {
 	} else {
 		tmp[0] = 252
 	}
+	tmp = fillup(tmp, 1, 10)
 	return tmp
+}
+
+func fillup(array []byte, endIndex, startIndex int) []byte {
+
+	for tmp := startIndex; tmp < endIndex; tmp++ {
+		array[tmp] = byte(0)
+	}
+
+	return array
 }
 
 func loginSetup(connection net.Conn) *User{	
@@ -267,6 +302,17 @@ func wait(connection net.Conn) ([]byte,int) {
 	return tmp, length
 }
 
+func removeZero(array []byte) []byte {
+	tmp:= make([]byte, 0)
+	for _,elem := range array {
+		if elem == 0 {
+			break
+		}
+		tmp = append(tmp, elem)
+	}
+	return tmp
+}
+
 func handleClient(connection net.Conn, user *User) {
 	stillconnected := true
 	for stillconnected {
@@ -291,20 +337,12 @@ func handleClient(connection net.Conn, user *User) {
 			fmt.Println(res, "sista raden i case1")
 			connection.Write(res)
 		case 2 : //whitdra
-			byteamount := currentOperation[1:length]
+			byteamount := removeZero(currentOperation[1:length])
 			fmt.Println(byteamount, "byteamount in 2")
 			
-			
-			var tmp string
-			for _, elem := range byteamount{
-				if elem != 0 {
-					tmp += string(elem)
-				}
-			}
-			
-			amount,_ := strconv.Atoi(tmp)
-
-			var tmpCode string
+			amount,amounterr := strconv.ParseInt(string(byteamount),10,64)
+			fmt.Println(amounterr, amount)
+			tmpCode := ""
 			for index := range user.enkod {
 				if user.enkod[index] != "-1" {
 					tmpCode = strconv.Itoa(index + 1)
@@ -319,12 +357,22 @@ func handleClient(connection net.Conn, user *User) {
 				connection.Write([]byte(tmpCode))
 			}
 
-			oneCodeInput := make([]byte, 2)
+			oneCodeInput := make([]byte, 10)
 			connection.Read(oneCodeInput) //Read the given inputCode
 
 			codeFound := false
-			
+
+			if oneCodeInput[0] != 103 {
+				connection.Write(validate(false))
+				break
+			}
+
+			oneCodeInput = removeZero(oneCodeInput[1:])
+			fmt.Println(string(oneCodeInput))
+
+			fmt.Println(oneCodeInput, "<-  oneCodeInput")
 			for i := range user.enkod {
+				fmt.Println(user.enkod[i])
 				if user.enkod[i] == string(oneCodeInput) {
 					user.enkod[i] = "-1" //remove the code
 					codeFound = true
@@ -338,23 +386,23 @@ func handleClient(connection net.Conn, user *User) {
 			}
 			
 			user.mutex.Lock()
-			userSaldo,_ := strconv.Atoi(user.saldo)
+			userSaldo,saldoerr := strconv.ParseInt(user.saldo, 10, 64)
+			fmt.Println(saldoerr)
 			
-			//if user.enkod[randcode-1] == inputcode {
-				if userSaldo - amount >= 0 {
-					//user.enkod[randcode-1] = 1
-					connection.Write(validate(true))
-					userSaldo = userSaldo - amount
-					user.saldo = strconv.Itoa(userSaldo) 
-				}else {
-					connection.Write(validate(false))
-				}
-			//} else {
-			//	write(client, []byte("Wronge onetime code"))
-			//}
+			saldoint,_ := strconv.ParseInt(string(userSaldo), 10, 64)
+			amountint,_ := strconv.ParseInt(string(amount), 10, 64)
+			if (saldoint - amountint) >= 0 {
+				connection.Write(validate(true))
+				newUserSal := saldoint - amountint
+				fmt.Println(newUserSal, "<- userSal")
+				user.saldo = strconv.FormatInt(newUserSal, 10) 
+			}else {
+				fmt.Println("jag skriver ut error i userSlado-amount")
+				connection.Write(validate(false))
+			}
 			user.mutex.Unlock()
 		case 3 : //deposit
-			byteamount := currentOperation[1:length]
+			byteamount := removeZero(currentOperation[1:length])
 			fmt.Println(byteamount, "byteamount")
 			
 			var tmp string

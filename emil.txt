@@ -1,0 +1,6 @@
+Du skal logge ind med dit kortnummer og password.
+Kort nummer:
+Kodeord:
+Godkendelse gyldig. Velkommen til Horizon bank, banken i morgen i dag!
+Hvad vil du gerne gøre? ER DETTE JESUS
+(1) Balance, (2) Tilbagetrækning, (3) Depositum, (4) Afslut, (5) Skift 
