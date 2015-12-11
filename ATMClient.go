@@ -8,14 +8,16 @@ import (
 	"net"
 	"strings"
 	"strconv"
+	//"bytes"
+	//"io"
 )
 
 //Global reader that will read what the user writes.
 var (
 	reader *bufio.Reader = bufio.NewReader(os.Stdin)
-	languages = "english\n日本語\ndeutsch\nsvenska"
-	intro = "Please pick a language.\n言語を選択してください。\nBitte wählen Sie eine Sprache aus.\nVar venlig velj ett sprak.\n"
-	end = "Please pick a real language.\n実際の言語を選択してください。\nBitte wählen Sie eine echte Sprache.\nSnelle velj ett riktigt sprak.\n"
+	languages = make([]string,4)
+	intro = "Please pick a language.\n"
+	end = "Please pick a real language.\n"
 
 	lines []string
 	custlang string
@@ -23,6 +25,10 @@ var (
 
 //main function that will create the client.
 func main() {
+	languages[0] = "english"
+	languages[1] = "日本語"
+	languages[2] = "deutsch"
+	languages[3] = "svenska"
 	client()
 }
 
@@ -33,12 +39,14 @@ func check(err error) {
     }
 }
 
-
-
 func validateLang() {
-	fmt.Println(intro + "\n" + languages)
+
+	fmt.Println(intro)
+	for _, lang := range languages {
+		fmt.Println(lang)
+	}
 	lines = make([]string,0)
-	l := strings.Split(languages, "\n")
+	l := languages
 	for {
 		//fmt.Println("Entering loop")
 		picked := strings.TrimSpace(userInput())
@@ -170,21 +178,108 @@ func decode(array []byte) string {
 	return tmp
 }
 
+
+func overrideFile(filename, newcontent string) {
+	file, fileErr := os.Create(filename)
+	if fileErr != nil {
+		fmt.Println(fileErr)
+	}
+	file.WriteString(newcontent)
+	file.Close()
+	return
+}
+
+func resetConn(connection net.Conn) {
+	tmp:=make([]byte, 20)
+	empty := false
+	for empty == false {
+		connection.Read(tmp)
+		fmt.Println("spam")
+		if tmp[0] == 0 {
+			empty = true
+		}
+	}
+	fmt.Println("Klar i resetConn!")
+}
+
+func updateFile(connection net.Conn) {
+	fmt.Println("Updating file...")
+	lang := make([]byte, 10)
+	var content string
+	
+	connection.Read(lang)
+
+	
+	
+	tmp := make([]byte, 255)
+	for {
+		read,_ := connection.Read(tmp)
+		if tmp[read-1] == 4 {
+			break
+		}
+		content += string(tmp)
+	}
+	
+	//fmt.Println(lang, "<- lang")
+	//fmt.Println(content, "<-- content")
+	//fmt.Println( "Over is  content")
+	
+	exist := false
+	
+	for _,currentlang := range languages {
+		if currentlang == string(lang) {
+			exist = true
+		}
+	}
+	if exist == false {
+		languages = append(languages, string(lang))
+	}
+
+	filename := strings.TrimSpace(string(lang)) + ".txt"
+
+	//fmt.Println(filename, "<- filename" ,[]byte(filename))
+
+	newcontent := string(content)
+	overrideFile(filename, newcontent)
+
+	//fmt.Println(custlang, "<- custlang")
+	//fmt.Println(strings.TrimSpace(string(lang)),"<- lang trimmad")
+
+	
+	if custlang == strings.TrimSpace(string(lang)) {
+		tmplines := make([]string,0)
+		file, err := os.Open(filename)
+		check(err)
+		
+		scanner := bufio.NewScanner(file)
+		for scanner.Scan() {
+			tmplines = append(tmplines, scanner.Text())
+		}
+	//	fmt.Println("Nu har vi scannat alla text", tmplines)
+		file.Close()
+		*(&lines) = tmplines
+		check(scanner.Err())
+	}
+	
+}
+
 func wait(connection net.Conn) ([]byte,int) {
-	tmp := make([]byte, 10)
+	fmt.Println("Nu är vi i wait")
+	tmp := make([]byte, 1)
+	rest := make([]byte, 9)
 	length := 0
 	readFlag := false
 	for readFlag != true {
-		 
 		length,_ = connection.Read(tmp)
 		if tmp[0] != 0 {
 			readFlag = true
+			connection.Read(rest)
 		}
 	}
+	tmp = append(tmp, rest...)
 	fmt.Println("kom ut ur wait", tmp, readFlag)
 	return tmp, length
 }
-
 
 func handlingRequests(connection net.Conn) {    
 	for {
@@ -193,6 +288,8 @@ func handlingRequests(connection net.Conn) {
 		fmt.Println(lines[5])
 		
 		input := strings.TrimSpace(userInput())
+
+	//	fmt.Println(input, "input in handlingReq")
 		switch input {
 		case "1": //saldo
 			cmd := makeMsg(1,"")
@@ -286,12 +383,28 @@ func handlingRequests(connection net.Conn) {
 //client starts the client.
 func client(){
     // Connect to the server through tcp/IP.
-	connection, err := net.Dial("tcp", ("127.0.0.1" + ":" + "6666"))
+	connection, err := net.Dial("tcp", ("127.0.0.1" + ":" + "8082"))
+	updateListener , listErr := net.Dial("tcp", ("127.0.0.1" + ":" + "8083"))
     // If connection failed crash.
 	check(err)
+	check(listErr)
+	//Create separate thread for uodating client.
+	go update(updateListener)
     //Configure the language.
     validateLang()
     //Time to log in to the account.
     loginSetUp(connection)
     handlingRequests(connection)
+}
+
+
+func update(connection net.Conn) {
+	tmp := make([]byte, 1)
+	for  {	 
+		connection.Read(tmp)
+		if tmp[0] == 255 {
+			fmt.Println(tmp[0], "<--tmp[0]")
+			updateFile(connection)
+		}
+	}
 }

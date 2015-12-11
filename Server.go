@@ -16,7 +16,6 @@ import (
 	"sync"
 	"runtime"
 	"io/ioutil"
-
 )
 
 
@@ -27,6 +26,14 @@ var (
 
 	// Hold the connections.
 	masterList []Customer
+
+	connections []net.Conn
+
+	
+	//updating = false
+	mutex = sync.Mutex{}
+
+	
 )
 
 /*User struct definierar all information om en user.*/
@@ -59,11 +66,17 @@ func server(port int) {
 
 	// start listening to a port
 	listener, err := net.Listen("tcp", ":" + stringPort)
+	updateListener, err := net.Listen("tcp", ":" + strconv.Itoa(port + 1))
+
+	
+	go updater(updateListener)
+	
 	if (err != nil) {
 		fmt.Println("Couldn't listen on port " + stringPort)
 		return
 	}
 	fmt.Println("Creating server master.")
+	
 	go srvMaster(listener)
 
 	for {
@@ -84,6 +97,14 @@ func server(port int) {
 	}
 }
 
+
+func updater(listener net.Listener) {
+	for {
+		connection, err := listener.Accept()
+		check(err)
+		connections = append(connections, connection)
+	}
+}
 func userInput() []byte {
     msg, err := reader.ReadBytes('\n')
 	check(err)
@@ -102,33 +123,38 @@ func srvMaster(listener net.Listener){
 				cust.connection.Close()
 			}
 			listener.Close()
-		case "banner" :
-			fmt.Println("What lang do you wish to change banner for?")
-			langPick := strings.TrimSpace(userInput()) //What langue master picked
-			fmt.Println("What is your banner?")
-			banner := strings.TrimSpace(userInput())
+		case "update" :
+			fmt.Println("What lang do you wish to update?")
+			lang := strings.TrimSpace(string(userInput())) //What langue master picked
+			filename := lang + ".txt"
+			content,_ := ioutil.ReadFile(filename)
 			
+			rest := make([]byte, 10-len(lang))
+			for index := range rest {
+				rest[index] = 32
+			}
+
+			
+			sendlang := []byte(lang)
+			sendlang = append(sendlang, rest...)
+
+			fmt.Println(content)
+
+			
+			for _,cons := range connections { 
+				//cons.connection.Write([]byte("hej"))
+				write(cons, append([]byte{255}, append(sendlang, append([]byte(content), byte(4))...)...))
+			}
 		default:
 			fmt.Println("Did not that understand command, please try again.")
 		}	
 	}	
 }
 
-func overrideFile(filename, replacement string, row int) {
-	content, err := ioutil.ReadFile(filename)
-	if err != nil {
-		fmt.Println(err)
-	}
-	rows := strings.Split(string(content), "\n")
-	rows[row] = replacement
-
-	file, fileErr := os.Create(filename)
-	if fileErr != nil {
-		fmt.Println(fileErr)
-	}
-	newContent := strings.Join(rows, "\n")
-	file.WriteString(newContent)
-	file.Close()
+func write(connection net.Conn, message []byte) {
+	mutex.Lock()
+	connection.Write(message)
+	mutex.Unlock()
 }
 
 func bytesToString(bytes []byte, start int, end int) string {
@@ -237,7 +263,7 @@ func wait(connection net.Conn) ([]byte,int) {
 			readFlag = true
 		}
 	}
-	fmt.Println("kom ut ur wait", tmp, readFlag)
+	fmt.Println("kom ut ur wait i srv", tmp, readFlag)
 	return tmp, length
 }
 
@@ -421,56 +447,4 @@ func findUser() {
 			userdata = make([]string, 6)
 		}
 	}
-}
-
-
-func write(connection net.Conn, msg []byte) {
-    size := len(msg)
-    sendSize := size/10
-    if size % 10 != 0 {
-        sendSize++
-    }
-
-    number := make([]byte, 1)
-    number[0] = byte(sendSize)
-    connection.Write(number)
-
-    for times := 1; times != sendSize; times++ {
-	    prev := 10*(times-1)
-	    _, timesError := connection.Write(msg[prev:(10*times)])
-	    check(timesError)
-    }
-     _, restError := connection.Write(format(msg[10*(sendSize-1):]))
-    check(restError)
-}
-
-func read(connection net.Conn) string {
-    times := make([]byte, 1)
-    for {
-        read, err := connection.Read(times)
-        check(err)
-        if read == 1 {
-            break
-        }
-    }
-    bytes := int(times[0])
-    holder := make([]byte, 10)
-    message := ""
-    
-    for bytes != 0 {
-        letters, Rederr := connection.Read(holder)
-        check(Rederr)
-        message += string(holder[0:letters])
-        bytes--
-    }
-
-	return strings.TrimSpace(message)
-}
-
-
-func writeAsciiPic(connection net.Conn){
-	bilden, err := ioutil.ReadFile("ascii.txt")
-	check(err)
-	write(connection, []byte(string(bilden)))
-	
 }

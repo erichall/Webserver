@@ -2,11 +2,11 @@ Logga in med ditt kortnummer och lösenord .
 Kortnummer:
 Lösenord:
 Autentisering giltigt. Välkommen till Horizon bank, bank i morgon idag !
-Vad skulle du vilja göra?
+Vad SKULLE UD VILJA GÖRA??? 
 ( 1 ) Balans , ( 2 ) Återkallelse , ( 3 ) Deposition , ( 4 ) Exit, ( 5 ) Byt språk
 Autentisering ogiltigt , försök igen .
-Belopp:
-Tack
+skriv in Belopp:
+för i helvete tack snella
 för att vara kund hos Horizon bank . Njuta av resten av din dag .
 Jag vet inte vilket språk som är .
 Inte sufficente medel
